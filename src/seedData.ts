@@ -162,6 +162,14 @@ export const seedFoods: Food[] = [
     notes: 'Sitio oficial Coca-Cola México.',
   },
   {
+    id: 'monster-ultra-white',
+    name: 'Monster Ultra White (sin azúcar)',
+    brand: 'Monster',
+    unit: 'ml',
+    per100: { kcal: 2, protein: 0, carbs: 0.9, fat: 0 },
+    notes: 'Etiqueta del producto (Open Food Facts / ficha oficial Monster).',
+  },
+  {
     id: 'xgear-zero-carb-choco',
     name: 'Proteína Zero Carb choco capuccino',
     brand: 'X-Gear',
@@ -230,20 +238,42 @@ export const seedDietTemplate: Meal[] = [
   },
 ]
 
+/** Adds any built-in foods/snacks introduced since the user's data was
+ * first seeded, without touching anything they've customized. Existing
+ * ids are left completely alone. */
+export function syncNewSeedFoods(data: AppData): AppData {
+  if (data.foods.length === 0) return data
+  const existingFoodIds = new Set(data.foods.map((f) => f.id))
+  const newFoods = seedFoods.filter((f) => !existingFoodIds.has(f.id))
+
+  const existingSnackFoodIds = new Set(data.savedSnacks.map((s) => s.foodId))
+  const newSnacks = defaultSavedSnacks.filter((s) => !existingSnackFoodIds.has(s.foodId))
+
+  if (newFoods.length === 0 && newSnacks.length === 0) return data
+  return {
+    ...data,
+    foods: [...data.foods, ...newFoods],
+    savedSnacks: [...data.savedSnacks, ...newSnacks],
+  }
+}
+
+const defaultSavedSnacks = [
+  { id: 'snack-manzana', foodId: 'manzana-verde', quantity: 150 },
+  { id: 'snack-toronja', foodId: 'toronja', quantity: 200 },
+  { id: 'snack-yogurt', foodId: 'yoplait-griego-sin-azucar', quantity: 120 },
+  { id: 'snack-coca-zero', foodId: 'coca-cola-zero', quantity: 355 },
+  { id: 'snack-lala-light', foodId: 'lala-100-light-proteina', quantity: 250 },
+  { id: 'snack-xgear', foodId: 'xgear-zero-carb-choco', quantity: 1 },
+  { id: 'snack-creatina', foodId: 'creatina-hero-sport', quantity: 1 },
+  { id: 'snack-monster', foodId: 'monster-ultra-white', quantity: 473 },
+]
+
 export function withSeedData(data: AppData): AppData {
   if (data.foods.length > 0) return data
   return {
     ...data,
     foods: seedFoods,
     dietTemplate: { meals: seedDietTemplate },
-    savedSnacks: [
-      { id: 'snack-manzana', foodId: 'manzana-verde', quantity: 150 },
-      { id: 'snack-toronja', foodId: 'toronja', quantity: 200 },
-      { id: 'snack-yogurt', foodId: 'yoplait-griego-sin-azucar', quantity: 120 },
-      { id: 'snack-coca-zero', foodId: 'coca-cola-zero', quantity: 355 },
-      { id: 'snack-lala-light', foodId: 'lala-100-light-proteina', quantity: 250 },
-      { id: 'snack-xgear', foodId: 'xgear-zero-carb-choco', quantity: 1 },
-      { id: 'snack-creatina', foodId: 'creatina-hero-sport', quantity: 1 },
-    ],
+    savedSnacks: defaultSavedSnacks,
   }
 }

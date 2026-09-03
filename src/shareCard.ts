@@ -5,6 +5,7 @@ interface CardInput {
   totals: Macros
   goals: Goals
   weightKg?: number
+  gymDay?: boolean
 }
 
 const W = 1080
@@ -60,7 +61,7 @@ function bar(
   }
 }
 
-export async function buildShareCard({ date, totals, goals, weightKg }: CardInput): Promise<Blob> {
+export async function buildShareCard({ date, totals, goals, weightKg, gymDay }: CardInput): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
@@ -88,6 +89,13 @@ export async function buildShareCard({ date, totals, goals, weightKg }: CardInpu
     90,
     185,
   )
+
+  // Gym day badge
+  if (gymDay) {
+    ctx.font = '400 52px -apple-system, system-ui, sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText('🏋️', W - 90, 145)
+  }
 
   // Calories headline
   ctx.fillStyle = '#f5f5f7'

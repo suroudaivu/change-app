@@ -1,4 +1,16 @@
 import { useState } from 'react'
+import {
+  ArrowLeftRight,
+  Apple,
+  ChevronLeft,
+  ChevronRight,
+  Coffee,
+  Dumbbell,
+  Moon,
+  UtensilsCrossed,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import type { AppData, Macros, MealSlot } from '../types'
 import {
   computeDayMacros,
@@ -18,6 +30,13 @@ const SLOT_LABEL: Record<MealSlot, string> = {
   comida: 'Comida',
   cena: 'Cena',
   snacks: 'Snacks y suplementos',
+}
+
+const SLOT_ICON: Record<MealSlot, LucideIcon> = {
+  desayuno: Coffee,
+  comida: UtensilsCrossed,
+  cena: Moon,
+  snacks: Apple,
 }
 
 interface TodayProps {
@@ -96,6 +115,14 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
     setSwapTarget(null)
   }
 
+  function toggleGymDay() {
+    update((current) => {
+      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
+      const nextLog = { ...currentLog, gymDay: !currentLog.gymDay }
+      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: nextLog } }
+    })
+  }
+
   async function handleShare() {
     const latestWeight = [...ensuredData.weightLog].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
     const blob = await buildShareCard({
@@ -103,6 +130,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
       totals,
       goals,
       weightKg: latestWeight?.kg,
+      gymDay: log.gymDay,
     })
     await shareCard(blob, date)
   }
@@ -134,12 +162,21 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
         </div>
         <div className="flex items-center gap-1">
           <button
+            onClick={toggleGymDay}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: log.gymDay ? 'var(--accent-bg)' : 'var(--surface)' }}
+            aria-label="Marcar día de gym"
+            title="Fui al gym"
+          >
+            <Dumbbell size={18} color={log.gymDay ? 'var(--accent)' : 'var(--text-faint)'} />
+          </button>
+          <button
             onClick={() => setDate((d) => shiftDate(d, -1))}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-dim)]"
+            className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ backgroundColor: 'var(--surface)' }}
             aria-label="Día anterior"
           >
-            ‹
+            <ChevronLeft size={18} color="var(--text-dim)" />
           </button>
           <button
             onClick={() => setDate((d) => shiftDate(d, 1))}
@@ -147,12 +184,11 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
             className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{
               backgroundColor: 'var(--surface)',
-              color: date === today ? 'var(--text-faint)' : 'var(--text-dim)',
               opacity: date === today ? 0.4 : 1,
             }}
             aria-label="Día siguiente"
           >
-            ›
+            <ChevronRight size={18} color="var(--text-dim)" />
           </button>
         </div>
       </div>
@@ -208,10 +244,12 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
       {log.meals.map((meal) => {
         const mealMacros = computeMealMacros(ensuredData, meal)
         const isPending = meal.slot !== 'snacks' && !meal.eaten
+        const SlotIcon = SLOT_ICON[meal.slot]
         return (
           <div key={meal.id} className="px-4 mt-4">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
+                <SlotIcon size={17} color="var(--text-dim)" />
                 <h2 className="text-base font-semibold text-[var(--text)]">{SLOT_LABEL[meal.slot]}</h2>
                 {meal.slot !== 'snacks' && (
                   <span
@@ -292,18 +330,18 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
                       onClick={() =>
                         setSwapTarget({ slot: meal.slot, itemId: item.id, foodName: food.name, macros: itemMacros })
                       }
-                      className="text-[var(--text-faint)] text-sm px-1.5"
+                      className="p-1.5 text-[var(--text-faint)]"
                       aria-label="Sustituir"
                       title="Sustituir"
                     >
-                      ⇄
+                      <ArrowLeftRight size={15} />
                     </button>
                     <button
                       onClick={() => removeItem(meal.slot, item.id)}
-                      className="text-[var(--text-faint)] text-lg px-2"
+                      className="p-1.5 text-[var(--text-faint)]"
                       aria-label="Quitar"
                     >
-                      ×
+                      <X size={17} />
                     </button>
                   </div>
                 )

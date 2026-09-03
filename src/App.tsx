@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { House, Scale, Settings, type LucideIcon } from 'lucide-react'
 import { useAppData } from './useAppData'
 import { Today } from './screens/Today'
 import { Ajustes } from './screens/Ajustes'
@@ -6,10 +7,10 @@ import { Peso } from './screens/Peso'
 
 type Tab = 'hoy' | 'peso' | 'ajustes'
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'hoy', label: 'Hoy', icon: '●' },
-  { id: 'peso', label: 'Peso', icon: '▲' },
-  { id: 'ajustes', label: 'Ajustes', icon: '⚙' },
+const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: 'hoy', label: 'Hoy', icon: House },
+  { id: 'peso', label: 'Peso', icon: Scale },
+  { id: 'ajustes', label: 'Ajustes', icon: Settings },
 ]
 
 export default function App() {
@@ -20,7 +21,7 @@ export default function App() {
     <div className="h-full">
       <main
         className="h-full overflow-y-auto flex flex-col"
-        style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}
       >
         {tab === 'hoy' && <Today data={data} update={update} onGoToBackup={() => setTab('ajustes')} />}
         {tab === 'peso' && <Peso data={data} update={update} />}
@@ -31,26 +32,25 @@ export default function App() {
         className="fixed inset-x-0 bottom-0 mx-auto max-w-[480px] flex border-t border-[var(--border)] bg-[var(--bg)]"
         style={{ paddingBottom: '4px' }}
       >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className="flex-1 flex flex-col items-center gap-1 py-2.5"
-          >
-            <span
-              className="text-lg"
-              style={{ color: tab === t.id ? 'var(--accent)' : 'var(--text-faint)' }}
+        {TABS.map((t) => {
+          const Icon = t.icon
+          const active = tab === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="flex-1 flex flex-col items-center gap-0.5 py-1.5"
             >
-              {t.icon}
-            </span>
-            <span
-              className="text-[11px]"
-              style={{ color: tab === t.id ? 'var(--accent)' : 'var(--text-faint)' }}
-            >
-              {t.label}
-            </span>
-          </button>
-        ))}
+              <Icon size={22} strokeWidth={active ? 2.3 : 1.8} color={active ? 'var(--accent)' : 'var(--text-faint)'} />
+              <span
+                className="text-[10px]"
+                style={{ color: active ? 'var(--accent)' : 'var(--text-faint)' }}
+              >
+                {t.label}
+              </span>
+            </button>
+          )
+        })}
       </nav>
     </div>
   )

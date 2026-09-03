@@ -44,6 +44,7 @@ export interface DietTemplate {
 export interface DayLog {
   date: string // YYYY-MM-DD
   meals: Meal[]
+  gymDay?: boolean
 }
 
 export interface WeightEntry {
