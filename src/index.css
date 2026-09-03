@@ -9,8 +9,10 @@
   --border: #2a2a33;
 
   --text: #f5f5f7;
-  --text-dim: #9a9aa5;
-  --text-faint: #66666f;
+  --text-dim: #9a9aa5; /* 6.4:1 on --surface */
+  /* Was #66666f, which measured 3.1:1 on --surface — under the 4.5:1 WCAG AA
+   * needs for the small text this is used on. */
+  --text-faint: #8a8a94; /* 5.2:1 on --surface */
 
   --accent: #0a84ff;
   --accent-bg: rgba(10, 132, 255, 0.14);

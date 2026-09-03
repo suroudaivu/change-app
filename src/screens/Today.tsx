@@ -59,6 +59,7 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
   const today = todayISO()
   const [date, setDate] = useState(today)
   const [backupDismissed, setBackupDismissed] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [swapTarget, setSwapTarget] = useState<{
@@ -167,15 +168,22 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
   }
 
   async function handleShare() {
-    const latestWeight = [...data.weightLog].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
-    const blob = await buildShareCard({
-      date,
-      totals,
-      goals,
-      weightKg: latestWeight?.kg,
-      gymDay: log.gymDay,
-    })
-    await shareCard(blob, date)
+    try {
+      const latestWeight = [...data.weightLog].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
+      const blob = await buildShareCard({
+        date,
+        totals,
+        goals,
+        weightKg: latestWeight?.kg,
+        gymDay: log.gymDay,
+      })
+      await shareCard(blob, date)
+    } catch {
+      // Sharing can fail where neither the OS share sheet nor a download is
+      // available — say so rather than appearing to do nothing.
+      setShareError('No se pudo compartir la imagen en este dispositivo.')
+      setTimeout(() => setShareError(null), 4000)
+    }
   }
 
   function updateQuantity(slot: MealSlot, itemId: string, quantity: number) {
@@ -280,6 +288,11 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
         >
           Compartir resumen del día
         </button>
+        {shareError && (
+          <p className="text-xs mt-1.5 text-center" style={{ color: 'var(--danger)' }}>
+            {shareError}
+          </p>
+        )}
       </div>
 
       {isUnlogged && (

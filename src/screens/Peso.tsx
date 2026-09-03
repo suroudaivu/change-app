@@ -201,7 +201,7 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
                       // Always keep dates readable: thin the ticks out instead
                       // of hiding the axis once there's a lot of history.
                       ticks: {
-                        color: '#66666f',
+                        color: '#8a8a94',
                         font: { size: 10 },
                         maxTicksLimit: 6,
                         maxRotation: 0,
@@ -209,7 +209,7 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
                       },
                       grid: { display: false },
                     },
-                    y: { ticks: { color: '#66666f', font: { size: 10 } }, grid: { color: '#2a2a33' } },
+                    y: { ticks: { color: '#8a8a94', font: { size: 10 } }, grid: { color: '#2a2a33' } },
                   },
                 }}
               />

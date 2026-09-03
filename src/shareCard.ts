@@ -77,7 +77,7 @@ export async function buildShareCard({ date, totals, goals, weightKg, gymDay }: 
   ctx.textAlign = 'left'
   ctx.fillText('Change', 90, 130)
 
-  ctx.fillStyle = '#66666f'
+  ctx.fillStyle = '#8a8a94'
   ctx.font = '400 34px -apple-system, system-ui, sans-serif'
   ctx.fillText(
     new Date(date + 'T00:00:00').toLocaleDateString('es-MX', {
@@ -102,7 +102,7 @@ export async function buildShareCard({ date, totals, goals, weightKg, gymDay }: 
   ctx.font = '700 150px -apple-system, system-ui, sans-serif'
   ctx.textAlign = 'left'
   ctx.fillText(String(Math.round(totals.kcal)), 90, 380)
-  ctx.fillStyle = '#66666f'
+  ctx.fillStyle = '#8a8a94'
   ctx.font = '400 40px -apple-system, system-ui, sans-serif'
   ctx.fillText(`de ${Math.round(goals.kcal)} kcal`, 90, 440)
 
@@ -117,7 +117,7 @@ export async function buildShareCard({ date, totals, goals, weightKg, gymDay }: 
     ctx.fillStyle = '#17171d'
     roundRect(ctx, 90, 1060, W - 180, 150, 32)
 
-    ctx.fillStyle = '#66666f'
+    ctx.fillStyle = '#8a8a94'
     ctx.font = '400 32px -apple-system, system-ui, sans-serif'
     ctx.textAlign = 'left'
     ctx.fillText('Peso', 140, 1125)

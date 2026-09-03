@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Pencil, X } from 'lucide-react'
 import type { AppData, Food, Goals, MealSlot } from '../types'
 import {
   applyBackup,
@@ -65,7 +65,8 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
     summary: BackupSummary
     fileName: string
   } | null>(null)
-  const [addingSupplement, setAddingSupplement] = useState(false)
+  // null = closed; { food: undefined } = creating; { food } = editing.
+  const [supplementForm, setSupplementForm] = useState<{ food?: Food } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // What your base diet adds up to, so edits can be checked against goals
@@ -83,17 +84,21 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
     { kcal: 0, protein: 0, carbs: 0, fat: 0 },
   )
 
-  function addSupplement(food: Food) {
-    update((current) => ({
-      ...current,
-      foods: [...current.foods, food],
-      // Also make it a one-tap chip under Hoy → Snacks y suplementos.
-      savedSnacks: [
-        ...current.savedSnacks,
-        { id: crypto.randomUUID(), foodId: food.id, quantity: 1 },
-      ],
-    }))
-    setAddingSupplement(false)
+  function saveSupplement(food: Food) {
+    update((current) => {
+      const exists = current.foods.some((f) => f.id === food.id)
+      return {
+        ...current,
+        foods: exists
+          ? current.foods.map((f) => (f.id === food.id ? food : f))
+          : [...current.foods, food],
+        // A new one also becomes a one-tap chip under Hoy → Snacks.
+        savedSnacks: exists
+          ? current.savedSnacks
+          : [...current.savedSnacks, { id: crypto.randomUUID(), foodId: food.id, quantity: 1 }],
+      }
+    })
+    setSupplementForm(null)
   }
 
   function removeSupplement(foodId: string, name: string) {
@@ -330,19 +335,28 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
                   </p>
                 </div>
                 {f.id.startsWith('custom-') && (
-                  <button
-                    onClick={() => removeSupplement(f.id, f.name)}
-                    className="w-11 h-11 -mr-2 flex items-center justify-center text-[var(--text-faint)] shrink-0"
-                    aria-label="Eliminar suplemento"
-                  >
-                    <X size={18} />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setSupplementForm({ food: f })}
+                      className="w-11 h-11 flex items-center justify-center text-[var(--text-faint)] shrink-0"
+                      aria-label="Editar suplemento"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => removeSupplement(f.id, f.name)}
+                      className="w-11 h-11 -mr-2 flex items-center justify-center text-[var(--text-faint)] shrink-0"
+                      aria-label="Eliminar suplemento"
+                    >
+                      <X size={18} />
+                    </button>
+                  </>
                 )}
               </div>
             ))}
         </div>
         <button
-          onClick={() => setAddingSupplement(true)}
+          onClick={() => setSupplementForm({})}
           className="w-full mt-2 h-11 rounded-xl text-sm font-medium"
           style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
         >
@@ -456,8 +470,12 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
         </div>
       )}
 
-      {addingSupplement && (
-        <AddSupplement onAdd={addSupplement} onClose={() => setAddingSupplement(false)} />
+      {supplementForm && (
+        <AddSupplement
+          editing={supplementForm.food}
+          onAdd={saveSupplement}
+          onClose={() => setSupplementForm(null)}
+        />
       )}
 
       {pickerSlot && (

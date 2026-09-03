@@ -42,19 +42,33 @@ function migrate(data: AppData): AppData {
   return { ...migrated, version: CURRENT_VERSION }
 }
 
-/** Shallow shape check — enough to reject a file that isn't ours before it
- * replaces real data, without rejecting one that merely lacks new fields. */
+/** Rejects a file that isn't ours — or one whose contents would break
+ * rendering — before it replaces real data, while still accepting a backup
+ * that merely predates newer optional fields. */
 export function isValidAppData(value: unknown): value is AppData {
   if (typeof value !== 'object' || value === null) return false
   const d = value as Partial<AppData>
-  return (
-    Array.isArray(d.foods) &&
-    Array.isArray(d.weightLog) &&
-    typeof d.dayLogs === 'object' &&
-    d.dayLogs !== null &&
-    typeof d.goals === 'object' &&
-    d.goals !== null
+
+  if (!Array.isArray(d.foods) || !Array.isArray(d.weightLog)) return false
+  if (typeof d.dayLogs !== 'object' || d.dayLogs === null) return false
+  if (typeof d.goals !== 'object' || d.goals === null) return false
+
+  const goalsOk = (['kcal', 'protein', 'carbs', 'fat'] as const).every(
+    (k) => typeof d.goals![k] === 'number' && Number.isFinite(d.goals![k]),
   )
+  if (!goalsOk) return false
+
+  const foodsOk = d.foods.every(
+    (f) => f && typeof f.id === 'string' && typeof f.name === 'string' && typeof f.per100 === 'object',
+  )
+  if (!foodsOk) return false
+
+  const logsOk = Object.values(d.dayLogs).every(
+    (log) => log && typeof log.date === 'string' && Array.isArray(log.meals),
+  )
+  if (!logsOk) return false
+
+  return d.weightLog.every((w) => w && typeof w.date === 'string' && typeof w.kg === 'number')
 }
 
 export function loadData(): AppData {

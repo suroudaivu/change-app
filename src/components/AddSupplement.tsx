@@ -4,20 +4,23 @@ import type { Food } from '../types'
 interface AddSupplementProps {
   onAdd: (food: Food) => void
   onClose: () => void
+  /** When present, the form edits this supplement instead of creating one. */
+  editing?: Food
 }
 
 /** Supplements are stored with unit 'unidad', where one unit is one dose.
  * Macros are held per 100 units (the app-wide convention), so a per-dose
  * value entered here is multiplied by 100 on the way in. */
-export function AddSupplement({ onAdd, onClose }: AddSupplementProps) {
-  const [name, setName] = useState('')
-  const [brand, setBrand] = useState('')
-  const [doseGrams, setDoseGrams] = useState('')
-  const [hasMacros, setHasMacros] = useState(false)
-  const [kcal, setKcal] = useState('')
-  const [protein, setProtein] = useState('')
-  const [carbs, setCarbs] = useState('')
-  const [fat, setFat] = useState('')
+export function AddSupplement({ onAdd, onClose, editing }: AddSupplementProps) {
+  const perDose = (v: number) => (v ? String(v / 100) : '')
+  const [name, setName] = useState(editing?.name ?? '')
+  const [brand, setBrand] = useState(editing?.brand ?? '')
+  const [doseGrams, setDoseGrams] = useState(editing?.unitWeight ? String(editing.unitWeight) : '')
+  const [hasMacros, setHasMacros] = useState(editing ? !editing.isSupplement : false)
+  const [kcal, setKcal] = useState(perDose(editing?.per100.kcal ?? 0))
+  const [protein, setProtein] = useState(perDose(editing?.per100.protein ?? 0))
+  const [carbs, setCarbs] = useState(perDose(editing?.per100.carbs ?? 0))
+  const [fat, setFat] = useState(perDose(editing?.per100.fat ?? 0))
 
   const canSave = name.trim().length > 0
 
@@ -25,7 +28,8 @@ export function AddSupplement({ onAdd, onClose }: AddSupplementProps) {
     if (!canSave) return
     const num = (v: string) => parseFloat(v) || 0
     onAdd({
-      id: `custom-${crypto.randomUUID()}`,
+      // Editing keeps the same id so existing log entries keep resolving.
+      id: editing?.id ?? `custom-${crypto.randomUUID()}`,
       name: name.trim(),
       brand: brand.trim() || undefined,
       unit: 'unidad',
@@ -53,7 +57,9 @@ export function AddSupplement({ onAdd, onClose }: AddSupplementProps) {
       >
         <div className="p-4 border-b border-[var(--border)]">
           <div className="w-10 h-1 rounded-full bg-[var(--border)] mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-[var(--text)]">Nuevo suplemento</h3>
+          <h3 className="text-lg font-semibold text-[var(--text)]">
+            {editing ? 'Editar suplemento' : 'Nuevo suplemento'}
+          </h3>
         </div>
 
         <div className="p-4 flex flex-col gap-3">
