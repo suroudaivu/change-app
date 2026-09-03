@@ -20,7 +20,7 @@ export default function App() {
     <div className="h-full">
       <main
         className="h-full overflow-y-auto flex flex-col"
-        style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom) + 10px)' }}
+        style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom))' }}
       >
         {tab === 'hoy' && <Today data={data} update={update} />}
         {tab === 'peso' && <Peso data={data} update={update} />}
@@ -29,7 +29,7 @@ export default function App() {
 
       <nav
         className="fixed inset-x-0 bottom-0 mx-auto max-w-[480px] flex border-t border-[var(--border)] bg-[var(--surface)]"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {TABS.map((t) => (
           <button
