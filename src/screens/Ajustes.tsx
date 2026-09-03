@@ -1,6 +1,14 @@
 import { useRef, useState } from 'react'
 import type { AppData, Food, Goals, MealSlot } from '../types'
-import { exportData, findFood, importData, loadData, markExported } from '../storage'
+import {
+  applyBackup,
+  exportData,
+  findFood,
+  inspectBackup,
+  loadData,
+  markExported,
+  type BackupSummary,
+} from '../storage'
 import { FoodPicker } from '../components/FoodPicker'
 import { AddSupplement } from '../components/AddSupplement'
 
@@ -9,6 +17,19 @@ const SLOT_LABEL: Record<MealSlot, string> = {
   comida: 'Comida',
   cena: 'Cena',
   snacks: 'Snacks frecuentes',
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between py-0.5">
+      <span className="text-[var(--text-dim)]">{label}</span>
+      <span className="text-[var(--text)] font-medium">{value}</span>
+    </div>
+  )
 }
 
 interface AjustesProps {
@@ -22,6 +43,10 @@ export function Ajustes({ data, update }: AjustesProps) {
   const [goalsDraft, setGoalsDraft] = useState<Goals>(data.goals)
   const [goalsSaved, setGoalsSaved] = useState(false)
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [pendingImport, setPendingImport] = useState<{
+    summary: BackupSummary
+    fileName: string
+  } | null>(null)
   const [addingSupplement, setAddingSupplement] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -69,14 +94,23 @@ export function Ajustes({ data, update }: AjustesProps) {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        importData(String(reader.result))
-        update(() => loadData())
-        setImportMsg({ ok: true, text: 'Datos restaurados correctamente.' })
+        // Parsed and validated, but nothing is replaced until confirmed.
+        setPendingImport({ summary: inspectBackup(String(reader.result)), fileName: file.name })
+        setImportMsg(null)
       } catch (err) {
+        setPendingImport(null)
         setImportMsg({ ok: false, text: err instanceof Error ? err.message : 'Archivo inválido.' })
       }
     }
     reader.readAsText(file)
+  }
+
+  function confirmImport() {
+    if (!pendingImport) return
+    applyBackup(pendingImport.summary)
+    update(() => loadData())
+    setPendingImport(null)
+    setImportMsg({ ok: true, text: 'Datos restaurados correctamente.' })
   }
 
   function addTemplateItem(slot: MealSlot, foodId: string, quantity: number) {
@@ -315,6 +349,58 @@ export function Ajustes({ data, update }: AjustesProps) {
           </div>
         </div>
       </div>
+
+      {pendingImport && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4"
+          onClick={() => setPendingImport(null)}
+        >
+          <div
+            className="w-full max-w-[440px] rounded-2xl bg-[var(--surface)] p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-[var(--text)]">¿Restaurar este respaldo?</h3>
+            <p className="text-xs text-[var(--text-faint)] mt-1 mb-3 break-all">{pendingImport.fileName}</p>
+
+            <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 text-sm">
+              <Row label="Días registrados" value={String(pendingImport.summary.loggedDays)} />
+              <Row label="Registros de peso" value={String(pendingImport.summary.weightEntries)} />
+              <Row label="Alimentos" value={String(pendingImport.summary.foods)} />
+              {pendingImport.summary.exportedAt && (
+                <Row
+                  label="Exportado el"
+                  value={new Date(pendingImport.summary.exportedAt).toLocaleDateString('es-MX', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                />
+              )}
+            </div>
+
+            <p className="text-xs mt-3" style={{ color: 'var(--danger)' }}>
+              Esto reemplaza por completo tus datos actuales ({plural(Object.keys(data.dayLogs).length, 'día', 'días')},{' '}
+              {plural(data.weightLog.length, 'peso', 'pesos')}). No se puede deshacer.
+            </p>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setPendingImport(null)}
+                className="flex-1 py-3 rounded-xl bg-[var(--surface-2)] text-[var(--text)] font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmImport}
+                className="flex-1 py-3 rounded-xl font-medium text-white"
+                style={{ backgroundColor: 'var(--danger)' }}
+              >
+                Reemplazar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {addingSupplement && (
         <AddSupplement onAdd={addSupplement} onClose={() => setAddingSupplement(false)} />

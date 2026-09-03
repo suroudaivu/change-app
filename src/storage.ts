@@ -17,13 +17,52 @@ function emptyData(): AppData {
   }
 }
 
+/**
+ * Schema migrations, keyed by the version they upgrade *from*. To change the
+ * shape of stored data: bump CURRENT_VERSION, then add the step that converts
+ * the previous version's data into the new shape, e.g.
+ *
+ *   2: (data) => ({ ...data, meals: renameSomething(data.meals) })
+ *
+ * Steps run in order, so old installs catch up through every intermediate
+ * version. Never edit a released step — add a new one.
+ */
+const migrations: Record<number, (data: AppData) => AppData> = {}
+
+function migrate(data: AppData): AppData {
+  let migrated = data
+  let version = typeof data.version === 'number' ? data.version : 1
+
+  while (version < CURRENT_VERSION) {
+    const step = migrations[version]
+    if (step) migrated = step(migrated)
+    version++
+  }
+
+  return { ...migrated, version: CURRENT_VERSION }
+}
+
+/** Shallow shape check — enough to reject a file that isn't ours before it
+ * replaces real data, without rejecting one that merely lacks new fields. */
+export function isValidAppData(value: unknown): value is AppData {
+  if (typeof value !== 'object' || value === null) return false
+  const d = value as Partial<AppData>
+  return (
+    Array.isArray(d.foods) &&
+    Array.isArray(d.weightLog) &&
+    typeof d.dayLogs === 'object' &&
+    d.dayLogs !== null &&
+    typeof d.goals === 'object' &&
+    d.goals !== null
+  )
+}
+
 export function loadData(): AppData {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return withSeedData(emptyData())
   try {
     const parsed = JSON.parse(raw) as AppData
-    // Future migrations by version would go here.
-    return syncNewSeedFoods(withSeedData({ ...emptyData(), ...parsed }))
+    return syncNewSeedFoods(withSeedData(migrate({ ...emptyData(), ...parsed })))
   } catch {
     console.error('Datos corruptos en localStorage, iniciando con datos vacíos.')
     return withSeedData(emptyData())
@@ -127,13 +166,42 @@ export function needsBackupReminder(data: AppData): boolean {
 }
 
 export function exportData(): string {
-  return JSON.stringify(loadData(), null, 2)
+  return JSON.stringify({ ...loadData(), exportedAt: new Date().toISOString() }, null, 2)
 }
 
-export function importData(json: string): void {
-  const parsed = JSON.parse(json) as AppData
-  if (typeof parsed !== 'object' || parsed === null || !('version' in parsed)) {
-    throw new Error('Archivo inválido: no parece un backup de Change.')
+export interface BackupSummary {
+  data: AppData
+  exportedAt?: string
+  loggedDays: number
+  weightEntries: number
+  foods: number
+}
+
+/** Parses and validates a backup file without applying it, so the user can
+ * see what they're about to replace their data with. */
+export function inspectBackup(json: string): BackupSummary {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    throw new Error('El archivo no es un JSON válido.')
   }
-  saveData({ ...emptyData(), ...parsed })
+
+  if (!isValidAppData(parsed)) {
+    throw new Error('Este archivo no parece un respaldo de Change.')
+  }
+
+  const data = migrate({ ...emptyData(), ...parsed })
+  return {
+    data,
+    exportedAt: (parsed as { exportedAt?: string }).exportedAt,
+    loggedDays: Object.keys(data.dayLogs).length,
+    weightEntries: data.weightLog.length,
+    foods: data.foods.length,
+  }
+}
+
+/** Applies an already-inspected backup. Replaces everything. */
+export function applyBackup(summary: BackupSummary): void {
+  saveData(summary.data)
 }

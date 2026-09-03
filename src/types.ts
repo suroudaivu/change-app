@@ -61,6 +61,8 @@ export interface Goals {
 
 export interface AppData {
   version: number
+  /** Stamped on export only; present in backup files, ignored otherwise. */
+  exportedAt?: string
   foods: Food[]
   dietTemplate: DietTemplate
   dayLogs: Record<string, DayLog>

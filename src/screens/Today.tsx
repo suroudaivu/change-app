@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowLeftRight,
   Apple,
+  CalendarPlus,
   ChevronLeft,
   ChevronRight,
   Coffee,
@@ -11,13 +12,13 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import type { AppData, Macros, MealSlot } from '../types'
+import type { AppData, DayLog, Macros, MealSlot } from '../types'
 import {
+  buildDayFromTemplate,
   computeDayMacros,
   computeMealMacros,
   daysSinceLastExport,
   findFood,
-  getOrCreateDayLog,
   needsBackupReminder,
   todayISO,
 } from '../storage'
@@ -66,67 +67,100 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
     macros: Macros
   } | null>(null)
 
-  // Derived in-memory from the diet template until the user actually edits
-  // today (the mutating handlers below persist it at that point).
-  const { data: ensuredData, log } = getOrCreateDayLog(data, date)
+  const persistedLog = data.dayLogs[date]
 
-  const totals = computeDayMacros(ensuredData, log)
-  const goals = ensuredData.goals
+  // Today starts pre-filled from the diet template (in memory — the mutating
+  // handlers below persist it on the first real edit). Memoized so item ids
+  // stay stable across renders; regenerating them would break inline editing,
+  // which keys off the id of the row being edited.
+  const draftLog = useMemo(
+    () => buildDayFromTemplate(data, date),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [date, data.dietTemplate],
+  )
+
+  // A past day that was never logged stays genuinely empty, so browsing
+  // history never shows an assumed diet as if it were recorded data.
+  const emptyLog: DayLog = useMemo(() => ({ date, meals: [] }), [date])
+  const isPast = date !== today
+  const log = persistedLog ?? (isPast ? emptyLog : draftLog)
+  // Also covers a past day touched only by the gym toggle, which persists a
+  // log with no meals — it still needs the offer to fill the day in.
+  const isUnlogged = isPast && log.meals.length === 0
+
+  const totals = computeDayMacros(data, log)
+  const goals = data.goals
+
+  function fillDayFromTemplate() {
+    update((current) => ({
+      ...current,
+      dayLogs: {
+        ...current.dayLogs,
+        // Keep anything already recorded for the day (e.g. the gym mark).
+        [date]: { ...buildDayFromTemplate(current, date), gymDay: current.dayLogs[date]?.gymDay },
+      },
+    }))
+  }
+
+  /** Applies a change to the day being viewed, persisting it. An unvisited
+   * day starts from the diet template only if it's today — a past day stays
+   * empty unless it was explicitly filled in. */
+  function mutateDay(fn: (log: DayLog) => DayLog) {
+    update((current) => {
+      const base =
+        current.dayLogs[date] ??
+        (date === today ? buildDayFromTemplate(current, date) : { date, meals: [] })
+      return { ...current, dayLogs: { ...current.dayLogs, [date]: fn(base) } }
+    })
+  }
+
+  function mutateMeals(fn: (meals: DayLog['meals']) => DayLog['meals']) {
+    mutateDay((log) => ({ ...log, meals: fn(log.meals) }))
+  }
 
   function addItem(slot: MealSlot, foodId: string, quantity: number) {
-    update((current) => {
-      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
-      const meals = currentLog.meals.map((m) =>
+    mutateMeals((meals) =>
+      meals.map((m) =>
         m.slot === slot
           ? { ...m, items: [...m.items, { id: crypto.randomUUID(), foodId, quantity }] }
           : m,
-      )
-      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
-    })
+      ),
+    )
     setPickerSlot(null)
   }
 
   function removeItem(slot: MealSlot, itemId: string) {
-    update((current) => {
-      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
-      const meals = currentLog.meals.map((m) =>
-        m.slot === slot ? { ...m, items: m.items.filter((i) => i.id !== itemId) } : m,
-      )
-      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
-    })
+    mutateMeals((meals) =>
+      meals.map((m) => {
+        if (m.slot !== slot) return m
+        const items = m.items.filter((i) => i.id !== itemId)
+        // A meal with nothing left in it can't meaningfully stay "comido".
+        return { ...m, items, eaten: items.length === 0 ? false : m.eaten }
+      }),
+    )
   }
 
   function toggleEaten(slot: MealSlot) {
-    update((current) => {
-      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
-      const meals = currentLog.meals.map((m) => (m.slot === slot ? { ...m, eaten: !m.eaten } : m))
-      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
-    })
+    mutateMeals((meals) => meals.map((m) => (m.slot === slot ? { ...m, eaten: !m.eaten } : m)))
   }
 
   function swapItem(slot: MealSlot, itemId: string, foodId: string, quantity: number) {
-    update((current) => {
-      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
-      const meals = currentLog.meals.map((m) =>
+    mutateMeals((meals) =>
+      meals.map((m) =>
         m.slot === slot
           ? { ...m, items: m.items.map((i) => (i.id === itemId ? { ...i, foodId, quantity } : i)) }
           : m,
-      )
-      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
-    })
+      ),
+    )
     setSwapTarget(null)
   }
 
   function toggleGymDay() {
-    update((current) => {
-      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
-      const nextLog = { ...currentLog, gymDay: !currentLog.gymDay }
-      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: nextLog } }
-    })
+    mutateDay((log) => ({ ...log, gymDay: !log.gymDay }))
   }
 
   async function handleShare() {
-    const latestWeight = [...ensuredData.weightLog].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
+    const latestWeight = [...data.weightLog].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
     const blob = await buildShareCard({
       date,
       totals,
@@ -138,15 +172,13 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
   }
 
   function updateQuantity(slot: MealSlot, itemId: string, quantity: number) {
-    update((current) => {
-      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
-      const meals = currentLog.meals.map((m) =>
+    mutateMeals((meals) =>
+      meals.map((m) =>
         m.slot === slot
           ? { ...m, items: m.items.map((i) => (i.id === itemId ? { ...i, quantity } : i)) }
           : m,
-      )
-      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
-    })
+      ),
+    )
   }
 
   return (
@@ -204,7 +236,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
         </button>
       )}
 
-      {!backupDismissed && needsBackupReminder(ensuredData) && (
+      {!backupDismissed && needsBackupReminder(data) && (
         <div className="mx-4 mt-2 mb-1 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'var(--accent-bg)' }}>
           <div className="flex-1">
             <p className="text-sm text-[var(--text)]">
@@ -243,8 +275,26 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
         </button>
       </div>
 
+      {isUnlogged && (
+        <div className="px-4 mt-6 text-center">
+          <p className="text-sm text-[var(--text)]">No registraste este día.</p>
+          <p className="text-xs text-[var(--text-faint)] mt-1 mb-4">
+            Se queda vacío para que tu historial refleje solo lo que sí registraste.
+          </p>
+          <button
+            onClick={fillDayFromTemplate}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+            style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
+          >
+            <CalendarPlus size={16} />
+            Llenar con mi dieta base
+          </button>
+        </div>
+      )}
+
       {log.meals.map((meal) => {
-        const mealMacros = computeMealMacros(ensuredData, meal)
+        const mealMacros = computeMealMacros(data, meal)
+        const isEmpty = meal.items.length === 0
         const isPending = meal.slot !== 'snacks' && !meal.eaten
         const SlotIcon = SLOT_ICON[meal.slot]
         return (
@@ -253,7 +303,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
               <div className="flex items-center gap-2">
                 <SlotIcon size={17} color="var(--text-dim)" />
                 <h2 className="text-base font-semibold text-[var(--text)]">{SLOT_LABEL[meal.slot]}</h2>
-                {meal.slot !== 'snacks' && (
+                {meal.slot !== 'snacks' && !isEmpty && (
                   <span
                     className="text-[11px] px-2 py-0.5 rounded-full font-medium"
                     style={
@@ -269,7 +319,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
               <span className="text-xs text-[var(--text-faint)]">{Math.round(mealMacros.kcal)} kcal</span>
             </div>
 
-            {meal.slot !== 'snacks' && (
+            {meal.slot !== 'snacks' && !isEmpty && (
               <button
                 onClick={() => toggleEaten(meal.slot)}
                 className="w-full mb-2 py-2 rounded-xl text-sm font-medium border"
@@ -291,7 +341,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
                 <p className="px-4 py-3 text-sm text-[var(--text-faint)]">Sin alimentos</p>
               )}
               {meal.items.map((item) => {
-                const food = findFood(ensuredData, item.foodId)
+                const food = findFood(data, item.foodId)
                 if (!food) return null
                 const factor = item.quantity / 100
                 const kcal = Math.round(food.per100.kcal * factor)
@@ -356,10 +406,10 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
               })}
             </div>
 
-            {meal.slot === 'snacks' && ensuredData.savedSnacks.length > 0 && (
+            {meal.slot === 'snacks' && data.savedSnacks.length > 0 && (
               <div className="flex gap-2 overflow-x-auto mt-2 pb-1 -mx-1 px-1">
-                {ensuredData.savedSnacks.map((snack) => {
-                  const food = findFood(ensuredData, snack.foodId)
+                {data.savedSnacks.map((snack) => {
+                  const food = findFood(data, snack.foodId)
                   if (!food) return null
                   return (
                     <button
@@ -388,7 +438,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
 
       {pickerSlot && (
         <FoodPicker
-          foods={ensuredData.foods}
+          foods={data.foods}
           onPick={(foodId, qty) => addItem(pickerSlot, foodId, qty)}
           onClose={() => setPickerSlot(null)}
         />
@@ -396,7 +446,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
 
       {swapTarget && (
         <FoodPicker
-          foods={ensuredData.foods}
+          foods={data.foods}
           title={`Sustituir "${swapTarget.foodName}"`}
           compareTo={swapTarget.macros}
           suggestions={commonSubstitutes[swapTarget.foodId]}
