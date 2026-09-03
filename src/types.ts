@@ -31,6 +31,10 @@ export interface Meal {
   slot: MealSlot
   name: string
   items: FoodItem[]
+  /** Whether this meal has actually been eaten today. Snacks are always
+   * implicitly eaten (they're logged as they're consumed); desayuno/comida/
+   * cena start pending until marked. */
+  eaten?: boolean
 }
 
 export interface DietTemplate {

@@ -49,6 +49,7 @@ export function buildDayFromTemplate(data: AppData, date: string): DayLog {
       ...meal,
       id: crypto.randomUUID(),
       items: meal.items.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      eaten: meal.slot === 'snacks',
     })),
   }
 }
@@ -95,8 +96,13 @@ export function computeMealMacros(data: AppData, meal: Meal): Macros {
   }, ZERO)
 }
 
+/** Only counts meals that are eaten (snacks always are) — a planned but
+ * unconfirmed desayuno/comida/cena shouldn't inflate today's totals. */
 export function computeDayMacros(data: AppData, log: DayLog): Macros {
-  return log.meals.reduce((total, meal) => addMacros(total, computeMealMacros(data, meal)), ZERO)
+  return log.meals.reduce((total, meal) => {
+    if (meal.slot !== 'snacks' && !meal.eaten) return total
+    return addMacros(total, computeMealMacros(data, meal))
+  }, ZERO)
 }
 
 export function exportData(): string {

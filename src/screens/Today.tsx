@@ -51,6 +51,14 @@ export function Today({ data, update }: TodayProps) {
     })
   }
 
+  function toggleEaten(slot: MealSlot) {
+    update((current) => {
+      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
+      const meals = currentLog.meals.map((m) => (m.slot === slot ? { ...m, eaten: !m.eaten } : m))
+      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
+    })
+  }
+
   function updateQuantity(slot: MealSlot, itemId: string, quantity: number) {
     update((current) => {
       const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
@@ -85,14 +93,46 @@ export function Today({ data, update }: TodayProps) {
 
       {log.meals.map((meal) => {
         const mealMacros = computeMealMacros(ensuredData, meal)
+        const isPending = meal.slot !== 'snacks' && !meal.eaten
         return (
           <div key={meal.id} className="px-4 mt-4">
-            <div className="flex justify-between items-baseline mb-2">
-              <h2 className="text-base font-semibold text-[var(--text)]">{SLOT_LABEL[meal.slot]}</h2>
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-[var(--text)]">{SLOT_LABEL[meal.slot]}</h2>
+                {meal.slot !== 'snacks' && (
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    style={
+                      isPending
+                        ? { color: 'var(--text-faint)', backgroundColor: 'var(--surface-2)' }
+                        : { color: 'var(--success)', backgroundColor: 'rgba(48,209,88,0.14)' }
+                    }
+                  >
+                    {isPending ? 'Pendiente' : '✓ Comido'}
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-[var(--text-faint)]">{Math.round(mealMacros.kcal)} kcal</span>
             </div>
 
-            <div className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]">
+            {meal.slot !== 'snacks' && (
+              <button
+                onClick={() => toggleEaten(meal.slot)}
+                className="w-full mb-2 py-2 rounded-xl text-sm font-medium border"
+                style={
+                  isPending
+                    ? { color: 'var(--accent)', borderColor: 'var(--accent)', backgroundColor: 'transparent' }
+                    : { color: 'var(--text-dim)', borderColor: 'var(--border)', backgroundColor: 'transparent' }
+                }
+              >
+                {isPending ? 'Marcar como comido' : 'Desmarcar'}
+              </button>
+            )}
+
+            <div
+              className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]"
+              style={{ opacity: isPending ? 0.55 : 1 }}
+            >
               {meal.items.length === 0 && (
                 <p className="px-4 py-3 text-sm text-[var(--text-faint)]">Sin alimentos</p>
               )}
