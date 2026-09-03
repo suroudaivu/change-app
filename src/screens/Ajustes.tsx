@@ -201,7 +201,7 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto">
       <div className="px-5 pt-4 mb-2">
         <h1 className="text-[28px] leading-tight font-bold tracking-tight text-[var(--text)]">Ajustes</h1>
       </div>

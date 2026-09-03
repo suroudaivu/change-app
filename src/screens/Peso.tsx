@@ -135,7 +135,7 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
   const todayEntry = data.weightLog.find((e) => e.date === today)
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto">
       <div className="px-5 pt-4">
         <h1 className="text-[28px] leading-tight font-bold tracking-tight text-[var(--text)]">Peso</h1>
       </div>

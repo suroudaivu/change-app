@@ -17,8 +17,8 @@ const TABS: NavTab<Tab>[] = [
 ]
 
 // The floating bar overlaps content, so the scroll area reserves its height
-// plus the gap it sits in — otherwise the last row hides underneath it.
-const NAV_CLEARANCE = 84
+// plus the small gap it sits in — just enough that the last row clears it.
+const NAV_CLEARANCE = 72
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('hoy')
@@ -28,7 +28,7 @@ export default function App() {
     <div className="h-full">
       <main
         className="h-full overflow-y-auto flex flex-col"
-        style={{ paddingBottom: `calc(${NAV_CLEARANCE}px + env(safe-area-inset-bottom))` }}
+        style={{ paddingBottom: `${NAV_CLEARANCE}px` }}
       >
         {tab === 'hoy' && (
           <Today
