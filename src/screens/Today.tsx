@@ -16,8 +16,15 @@ interface TodayProps {
   update: (fn: (current: AppData) => AppData) => void
 }
 
+function shiftDate(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 export function Today({ data, update }: TodayProps) {
-  const date = todayISO()
+  const today = todayISO()
+  const [date, setDate] = useState(today)
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [swapTarget, setSwapTarget] = useState<{
@@ -92,16 +99,50 @@ export function Today({ data, update }: TodayProps) {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6">
-      <div className="px-4 pt-4">
-        <h1 className="text-2xl font-semibold text-[var(--text)]">Hoy</h1>
-        <p className="text-sm text-[var(--text-faint)] mb-2">
-          {new Date(date + 'T00:00:00').toLocaleDateString('es-MX', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
-        </p>
+      <div className="px-4 pt-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-[var(--text)]">{date === today ? 'Hoy' : 'Día'}</h1>
+          <p className="text-sm text-[var(--text-faint)] mb-2">
+            {new Date(date + 'T00:00:00').toLocaleDateString('es-MX', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setDate((d) => shiftDate(d, -1))}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-dim)]"
+            style={{ backgroundColor: 'var(--surface)' }}
+            aria-label="Día anterior"
+          >
+            ‹
+          </button>
+          <button
+            onClick={() => setDate((d) => shiftDate(d, 1))}
+            disabled={date === today}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{
+              backgroundColor: 'var(--surface)',
+              color: date === today ? 'var(--text-faint)' : 'var(--text-dim)',
+              opacity: date === today ? 0.4 : 1,
+            }}
+            aria-label="Día siguiente"
+          >
+            ›
+          </button>
+        </div>
       </div>
+      {date !== today && (
+        <button
+          onClick={() => setDate(today)}
+          className="mx-4 mt-1 mb-1 text-xs font-medium"
+          style={{ color: 'var(--accent)' }}
+        >
+          ← Volver a hoy
+        </button>
+      )}
 
       <div className="px-4 py-3 mb-2 bg-[var(--surface)] mx-4 rounded-2xl">
         <ProgressBar label="Calorías" consumed={totals.kcal} goal={goals.kcal} unit="kcal" color="var(--accent)" />
