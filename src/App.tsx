@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAppData } from './useAppData'
 import { Today } from './screens/Today'
 import { Ajustes } from './screens/Ajustes'
+import { Peso } from './screens/Peso'
 
 type Tab = 'hoy' | 'peso' | 'ajustes'
 
@@ -11,18 +12,6 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'ajustes', label: 'Ajustes', icon: '⚙' },
 ]
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="flex-1 flex items-center justify-center px-6 text-center">
-      <div>
-        <p className="text-[var(--text-dim)] text-sm">Pantalla</p>
-        <h1 className="text-2xl font-semibold text-[var(--text)] mt-1">{title}</h1>
-        <p className="text-[var(--text-faint)] text-sm mt-3">Se construye en la siguiente fase.</p>
-      </div>
-    </div>
-  )
-}
-
 export default function App() {
   const [tab, setTab] = useState<Tab>('hoy')
   const { data, update } = useAppData()
@@ -31,7 +20,7 @@ export default function App() {
     <div className="flex flex-col min-h-screen">
       <main className="flex-1 flex flex-col overflow-y-auto">
         {tab === 'hoy' && <Today data={data} update={update} />}
-        {tab === 'peso' && <Placeholder title="Peso" />}
+        {tab === 'peso' && <Peso data={data} update={update} />}
         {tab === 'ajustes' && <Ajustes data={data} update={update} />}
       </main>
 
