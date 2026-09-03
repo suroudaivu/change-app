@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import type { AppData, MealSlot } from '../types'
-import { findFood } from '../storage'
+import { useRef, useState } from 'react'
+import type { AppData, Goals, MealSlot } from '../types'
+import { exportData, findFood, importData, loadData } from '../storage'
 import { FoodPicker } from '../components/FoodPicker'
 
 const SLOT_LABEL: Record<MealSlot, string> = {
@@ -18,6 +18,42 @@ interface AjustesProps {
 export function Ajustes({ data, update }: AjustesProps) {
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
+  const [goalsDraft, setGoalsDraft] = useState<Goals>(data.goals)
+  const [goalsSaved, setGoalsSaved] = useState(false)
+  const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function saveGoals() {
+    update((current) => ({ ...current, goals: goalsDraft }))
+    setGoalsSaved(true)
+    setTimeout(() => setGoalsSaved(false), 1500)
+  }
+
+  function handleExport() {
+    const json = exportData()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const stamp = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `change-backup-${stamp}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function handleImportFile(file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        importData(String(reader.result))
+        update(() => loadData())
+        setImportMsg({ ok: true, text: 'Datos restaurados correctamente.' })
+      } catch (err) {
+        setImportMsg({ ok: false, text: err instanceof Error ? err.message : 'Archivo inválido.' })
+      }
+    }
+    reader.readAsText(file)
+  }
 
   function addTemplateItem(slot: MealSlot, foodId: string, quantity: number) {
     update((current) => ({
@@ -61,6 +97,38 @@ export function Ajustes({ data, update }: AjustesProps) {
     <div className="flex-1 overflow-y-auto pb-6">
       <div className="px-4 pt-4 mb-2">
         <h1 className="text-2xl font-semibold text-[var(--text)]">Ajustes</h1>
+      </div>
+
+      <div className="px-4 mb-6">
+        <h2 className="text-base font-semibold text-[var(--text)] mb-2">Objetivos diarios</h2>
+        <div className="rounded-2xl bg-[var(--surface)] p-4 grid grid-cols-2 gap-3">
+          {(
+            [
+              ['kcal', 'Calorías'],
+              ['protein', 'Proteína (g)'],
+              ['carbs', 'Carbohidratos (g)'],
+              ['fat', 'Grasas (g)'],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className="flex flex-col gap-1">
+              <span className="text-xs text-[var(--text-faint)]">{label}</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={goalsDraft[key]}
+                onChange={(e) => setGoalsDraft({ ...goalsDraft, [key]: parseFloat(e.target.value) || 0 })}
+                className="bg-[var(--surface-2)] rounded-xl px-3 py-2 text-[var(--text)] outline-none"
+              />
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={saveGoals}
+          className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium text-white"
+          style={{ backgroundColor: goalsSaved ? 'var(--success)' : 'var(--accent)' }}
+        >
+          {goalsSaved ? '✓ Guardado' : 'Guardar objetivos'}
+        </button>
       </div>
 
       <div className="px-4 mb-4">
@@ -130,6 +198,80 @@ export function Ajustes({ data, update }: AjustesProps) {
               </button>
             </div>
           ))}
+      </div>
+
+      <div className="px-4 mb-6">
+        <h2 className="text-base font-semibold text-[var(--text)] mb-2">Suplementos</h2>
+        <div className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]">
+          {data.foods
+            .filter((f) => f.isSupplement || f.id === 'xgear-zero-carb-choco')
+            .map((f) => (
+              <div key={f.id} className="px-4 py-3">
+                <p className="text-sm text-[var(--text)]">
+                  {f.name} {f.brand && <span className="text-[var(--text-faint)]">· {f.brand}</span>}
+                </p>
+                <p className="text-xs text-[var(--text-faint)] mt-0.5">
+                  {f.isSupplement
+                    ? 'No aporta calorías ni macros.'
+                    : `1 unidad (${f.unitWeight} g) · ${f.per100.kcal / 100} kcal, ${f.per100.protein / 100} g proteína`}
+                </p>
+              </div>
+            ))}
+        </div>
+        <p className="text-xs text-[var(--text-faint)] mt-2">
+          Regístralos desde Hoy → Snacks, con los accesos rápidos.
+        </p>
+      </div>
+
+      <div className="px-4 mb-6">
+        <h2 className="text-base font-semibold text-[var(--text)] mb-2">Respaldo de datos</h2>
+        <div className="rounded-2xl bg-[var(--surface)] p-4 flex flex-col gap-3">
+          <div>
+            <p className="text-sm text-[var(--text)] mb-1">Exportar</p>
+            <p className="text-xs text-[var(--text-faint)] mb-2">
+              Descarga un archivo con toda tu dieta, historial y objetivos.
+            </p>
+            <button
+              onClick={handleExport}
+              className="w-full py-2.5 rounded-xl text-sm font-medium text-white"
+              style={{ backgroundColor: 'var(--accent)' }}
+            >
+              Exportar datos
+            </button>
+          </div>
+          <div>
+            <p className="text-sm text-[var(--text)] mb-1">Importar</p>
+            <p className="text-xs text-[var(--text-faint)] mb-2">
+              Restaura desde un archivo exportado anteriormente. Reemplaza los datos actuales.
+            </p>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full py-2.5 rounded-xl text-sm font-medium border"
+              style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
+            >
+              Elegir archivo...
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleImportFile(file)
+                e.target.value = ''
+              }}
+            />
+            {importMsg && (
+              <p
+                className="text-xs mt-2"
+                style={{ color: importMsg.ok ? 'var(--success)' : 'var(--danger)' }}
+              >
+                {importMsg.text}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {pickerSlot && (

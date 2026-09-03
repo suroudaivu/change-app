@@ -242,6 +242,8 @@ export function withSeedData(data: AppData): AppData {
       { id: 'snack-yogurt', foodId: 'yoplait-griego-sin-azucar', quantity: 120 },
       { id: 'snack-coca-zero', foodId: 'coca-cola-zero', quantity: 355 },
       { id: 'snack-lala-light', foodId: 'lala-100-light-proteina', quantity: 250 },
+      { id: 'snack-xgear', foodId: 'xgear-zero-carb-choco', quantity: 1 },
+      { id: 'snack-creatina', foodId: 'creatina-hero-sport', quantity: 1 },
     ],
   }
 }

@@ -215,6 +215,25 @@ export function Today({ data, update }: TodayProps) {
               })}
             </div>
 
+            {meal.slot === 'snacks' && ensuredData.savedSnacks.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto mt-2 pb-1 -mx-1 px-1">
+                {ensuredData.savedSnacks.map((snack) => {
+                  const food = findFood(ensuredData, snack.foodId)
+                  if (!food) return null
+                  return (
+                    <button
+                      key={snack.id}
+                      onClick={() => addItem('snacks', snack.foodId, snack.quantity)}
+                      className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap"
+                      style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text)' }}
+                    >
+                      + {food.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             <button
               onClick={() => setPickerSlot(meal.slot)}
               className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium"
