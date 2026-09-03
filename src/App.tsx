@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useAppData } from './useAppData'
+import { Today } from './screens/Today'
 
 type Tab = 'hoy' | 'peso' | 'ajustes'
 
@@ -22,11 +24,12 @@ function Placeholder({ title }: { title: string }) {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('hoy')
+  const { data, update } = useAppData()
 
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1 flex flex-col overflow-y-auto">
-        {tab === 'hoy' && <Placeholder title="Hoy" />}
+        {tab === 'hoy' && <Today data={data} update={update} />}
         {tab === 'peso' && <Placeholder title="Peso" />}
         {tab === 'ajustes' && <Placeholder title="Ajustes" />}
       </main>
