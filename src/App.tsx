@@ -17,14 +17,14 @@ export default function App() {
   const { data, update } = useAppData()
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       <main className="flex-1 flex flex-col overflow-y-auto">
         {tab === 'hoy' && <Today data={data} update={update} />}
         {tab === 'peso' && <Peso data={data} update={update} />}
         {tab === 'ajustes' && <Ajustes data={data} update={update} />}
       </main>
 
-      <nav className="flex border-t border-[var(--border)] bg-[var(--surface)] pb-[env(safe-area-inset-bottom)]">
+      <nav className="flex border-t border-[var(--border)] bg-[var(--surface)] pb-[calc(env(safe-area-inset-bottom)+6px)] shrink-0">
         {TABS.map((t) => (
           <button
             key={t.id}
