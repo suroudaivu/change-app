@@ -25,8 +25,7 @@
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
 }
 
@@ -45,4 +44,7 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  /* 100dvh (not %) so this pins to the true visible viewport in a standalone
+   * iOS PWA, where percentage-height chains from html/body are unreliable. */
+  min-height: 100dvh;
 }

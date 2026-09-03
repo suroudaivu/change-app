@@ -17,7 +17,7 @@ export default function App() {
   const { data, update } = useAppData()
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       <main className="flex-1 flex flex-col overflow-y-auto">
         {tab === 'hoy' && <Today data={data} update={update} />}
         {tab === 'peso' && <Peso data={data} update={update} />}
