@@ -1,8 +1,49 @@
+import { TrendingDown, TrendingUp, Target, AlertTriangle } from 'lucide-react'
 import type { Goals, Macros } from '../types'
 
 interface DaySummaryProps {
   totals: Macros
   goals: Goals
+}
+
+/**
+ * The calorie goal already has the deficit baked into it, so "how big is my
+ * deficit" is measured against maintenance, not against the goal. Eating
+ * under the goal isn't automatically better — too deep a deficit is what
+ * costs muscle — so this names both directions instead of only warning
+ * about overeating.
+ */
+function deficitStatus(consumedKcal: number, goals: Goals) {
+  const target = goals.maintenanceKcal - goals.kcal
+  const actual = goals.maintenanceKcal - consumedKcal
+
+  if (actual < 0) {
+    return {
+      icon: TrendingUp,
+      color: 'var(--warning)',
+      text: `Superávit de ${Math.abs(Math.round(actual)).toLocaleString('es-MX')} kcal`,
+    }
+  }
+  // Deeper than about 1.6x the plan is where muscle loss risk climbs.
+  if (target > 0 && actual > target * 1.6) {
+    return {
+      icon: AlertTriangle,
+      color: 'var(--warning)',
+      text: `Déficit de ${Math.round(actual).toLocaleString('es-MX')} kcal — más profundo de lo planeado`,
+    }
+  }
+  if (target > 0 && actual < target * 0.5) {
+    return {
+      icon: Target,
+      color: 'var(--text-dim)',
+      text: `Déficit de ${Math.round(actual).toLocaleString('es-MX')} kcal — menor al planeado`,
+    }
+  }
+  return {
+    icon: TrendingDown,
+    color: 'var(--success)',
+    text: `Déficit de ${Math.round(actual).toLocaleString('es-MX')} kcal — en tu rango`,
+  }
 }
 
 const MACROS = [
@@ -34,6 +75,7 @@ export function DaySummary({ totals, goals }: DaySummaryProps) {
   const remaining = Math.round(goals.kcal - totals.kcal)
   const over = remaining < 0
   const pct = goals.kcal > 0 ? (totals.kcal / goals.kcal) * 100 : 0
+  const Status = deficitStatus(totals.kcal, goals)
 
   return (
     <div className="rounded-3xl bg-[var(--surface)] px-5 pt-5 pb-4">
@@ -55,6 +97,16 @@ export function DaySummary({ totals, goals }: DaySummaryProps) {
       </div>
 
       <Track pct={pct} color={over ? 'var(--warning)' : 'var(--accent)'} height={8} />
+
+      {goals.maintenanceKcal > 0 && (
+        <div className="flex items-start gap-2 mt-3.5">
+          <Status.icon size={14} color={Status.color} className="shrink-0 mt-0.5" />
+          <p className="text-xs leading-snug flex-1" style={{ color: Status.color }}>
+            <span className="text-[var(--text-faint)]">Si cierras el día así: </span>
+            {Status.text}
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[var(--border)]">
         {MACROS.map(({ key, label, color }) => {

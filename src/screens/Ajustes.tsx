@@ -113,7 +113,7 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
     )
   }
 
-  const goalsDirty = (['kcal', 'protein', 'carbs', 'fat'] as const).some(
+  const goalsDirty = (['kcal', 'protein', 'carbs', 'fat', 'maintenanceKcal'] as const).some(
     (k) => goalsDraft[k] !== data.goals[k],
   )
 
@@ -228,6 +228,27 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
               />
             </label>
           ))}
+
+          <label className="flex flex-col gap-1 col-span-2 pt-3 border-t border-[var(--border)]">
+            <span className="text-xs text-[var(--text-faint)]">Gasto de mantenimiento (kcal)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={goalsDraft.maintenanceKcal}
+              onChange={(e) =>
+                setGoalsDraft({ ...goalsDraft, maintenanceKcal: parseFloat(e.target.value) || 0 })
+              }
+              className="bg-[var(--surface-2)] rounded-xl px-3 py-2 text-[var(--text)] outline-none"
+            />
+            <span className="text-[11px] text-[var(--text-faint)] leading-snug mt-0.5">
+              Lo que quemas al día sin déficit. Tu objetivo de {Math.round(goalsDraft.kcal)} kcal ya
+              lleva el déficit incluido:{' '}
+              <span style={{ color: 'var(--text-dim)' }}>
+                {Math.round(goalsDraft.maintenanceKcal - goalsDraft.kcal)} kcal por día
+              </span>
+              .
+            </span>
+          </label>
         </div>
         {/* Only surfaces once something actually changed — a permanent bright
             CTA would be the loudest thing on screen for a rare action. */}

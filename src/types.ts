@@ -57,6 +57,9 @@ export interface Goals {
   protein: number
   carbs: number
   fat: number
+  /** Estimated daily burn (TDEE). The deficit is measured against this, not
+   * against the calorie goal — the goal already has the deficit built in. */
+  maintenanceKcal: number
 }
 
 export interface AppData {

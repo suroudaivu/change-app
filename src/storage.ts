@@ -2,7 +2,8 @@ import type { AppData, DayLog, Food, Macros, Meal } from './types'
 import { syncNewSeedFoods, withSeedData } from './seedData'
 
 const STORAGE_KEY = 'change-app:data'
-const CURRENT_VERSION = 1
+const CURRENT_VERSION = 2
+const DEFAULT_MAINTENANCE_KCAL = 2915
 
 function emptyData(): AppData {
   return {
@@ -11,7 +12,13 @@ function emptyData(): AppData {
     dietTemplate: { meals: [] },
     dayLogs: {},
     weightLog: [],
-    goals: { kcal: 2400, protein: 190, carbs: 260, fat: 65 },
+    goals: {
+      kcal: 2400,
+      protein: 190,
+      carbs: 260,
+      fat: 65,
+      maintenanceKcal: DEFAULT_MAINTENANCE_KCAL,
+    },
     savedSnacks: [],
     frequentFoodIds: [],
   }
@@ -27,7 +34,17 @@ function emptyData(): AppData {
  * Steps run in order, so old installs catch up through every intermediate
  * version. Never edit a released step — add a new one.
  */
-const migrations: Record<number, (data: AppData) => AppData> = {}
+const migrations: Record<number, (data: AppData) => AppData> = {
+  // v1 had no maintenance figure, so the deficit couldn't be derived. Seed it
+  // from the TDEE estimate; it's editable in Ajustes.
+  1: (data) => ({
+    ...data,
+    goals: {
+      ...data.goals,
+      maintenanceKcal: data.goals.maintenanceKcal ?? DEFAULT_MAINTENANCE_KCAL,
+    },
+  }),
+}
 
 function migrate(data: AppData): AppData {
   let migrated = data
@@ -76,7 +93,11 @@ export function loadData(): AppData {
   if (!raw) return withSeedData(emptyData())
   try {
     const parsed = JSON.parse(raw) as AppData
-    return syncNewSeedFoods(withSeedData(migrate({ ...emptyData(), ...parsed })))
+    const upgraded = syncNewSeedFoods(withSeedData(migrate({ ...emptyData(), ...parsed })))
+    // Write the upgraded shape back, so what's stored matches what's running
+    // instead of being re-migrated on every load.
+    if (parsed.version !== CURRENT_VERSION) saveData(upgraded)
+    return upgraded
   } catch {
     console.error('Datos corruptos en localStorage, iniciando con datos vacíos.')
     return withSeedData(emptyData())

@@ -17,9 +17,12 @@ interface FloatingNavProps<T extends string> {
  * scrolling underneath it. */
 export function FloatingNav<T extends string>({ tabs, active, onChange }: FloatingNavProps<T>) {
   return (
+    /* iOS already leaves a strip below the viewport that no CSS can reach, so
+       the bar only needs a fraction of the safe-area inset on top of it —
+       using the full inset just widens the dead zone underneath. */
     <nav
       className="fixed inset-x-0 z-40 flex justify-center px-6 pointer-events-none"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 14px)' }}
+      style={{ bottom: 'calc(env(safe-area-inset-bottom) * 0.35 + 8px)' }}
     >
       <div
         className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full w-full max-w-[320px]"
