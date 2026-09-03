@@ -9,6 +9,9 @@ interface FoodPickerProps {
    * confirm button reads "Sustituir" instead of "Agregar". */
   compareTo?: Macros
   title?: string
+  /** Quick "common substitute" chips shown above the search, each with a
+   * sensible default quantity for that specific swap. */
+  suggestions?: { foodId: string; quantity: number }[]
 }
 
 function scale(f: Food, quantity: number): Macros {
@@ -38,7 +41,7 @@ function Delta({ label, before, after, unit }: { label: string; before: number; 
   )
 }
 
-export function FoodPicker({ foods, onPick, onClose, compareTo, title }: FoodPickerProps) {
+export function FoodPicker({ foods, onPick, onClose, compareTo, title, suggestions }: FoodPickerProps) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('100')
@@ -51,8 +54,29 @@ export function FoodPicker({ foods, onPick, onClose, compareTo, title }: FoodPic
     )
   }, [foods, query])
 
+  const suggestedFoods = useMemo(
+    () =>
+      (suggestions ?? [])
+        .map((s) => ({ food: foods.find((f) => f.id === s.foodId), quantity: s.quantity }))
+        .filter((s): s is { food: Food; quantity: number } => !!s.food),
+    [suggestions, foods],
+  )
+
   const qtyNum = parseFloat(quantity) || 0
   const newMacros = selected ? scale(selected, qtyNum) : null
+
+  function pick(food: Food, presetQuantity?: number) {
+    setSelected(food)
+    setQuantity(
+      presetQuantity != null
+        ? String(presetQuantity)
+        : food.unit === 'unidad'
+          ? '1'
+          : food.unitWeight
+            ? String(food.unitWeight)
+            : '100',
+    )
+  }
 
   function confirm() {
     if (!selected) return
@@ -90,13 +114,27 @@ export function FoodPicker({ foods, onPick, onClose, compareTo, title }: FoodPic
 
         {!selected ? (
           <div className="overflow-y-auto flex-1 px-2 py-2">
+            {suggestedFoods.length > 0 && !query && (
+              <div className="px-1 pb-2 mb-2 border-b border-[var(--border)]">
+                <p className="text-xs text-[var(--text-faint)] px-2 mb-1.5">Sustitutos comunes</p>
+                <div className="flex gap-2 overflow-x-auto px-1 pb-1">
+                  {suggestedFoods.map(({ food, quantity: q }) => (
+                    <button
+                      key={food.id}
+                      onClick={() => pick(food, q)}
+                      className="shrink-0 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+                      style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }}
+                    >
+                      {food.name} · {q} {food.unit === 'unidad' ? 'u' : food.unit}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {results.map((f) => (
               <button
                 key={f.id}
-                onClick={() => {
-                  setSelected(f)
-                  setQuantity(f.unit === 'unidad' ? '1' : (f.unitWeight ? String(f.unitWeight) : '100'))
-                }}
+                onClick={() => pick(f)}
                 className="w-full text-left px-3 py-3 rounded-xl active:bg-[var(--surface-2)] flex justify-between items-center"
               >
                 <span>

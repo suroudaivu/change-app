@@ -100,6 +100,7 @@ export async function buildShareCard({ date, totals, goals, weightKg, gymDay }: 
   // Calories headline
   ctx.fillStyle = '#f5f5f7'
   ctx.font = '700 150px -apple-system, system-ui, sans-serif'
+  ctx.textAlign = 'left'
   ctx.fillText(String(Math.round(totals.kcal)), 90, 380)
   ctx.fillStyle = '#66666f'
   ctx.font = '400 40px -apple-system, system-ui, sans-serif'

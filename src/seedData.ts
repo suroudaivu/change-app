@@ -162,6 +162,14 @@ export const seedFoods: Food[] = [
     notes: 'Sitio oficial Coca-Cola México.',
   },
   {
+    id: 'tortilla-maiz',
+    name: 'Tortilla de maíz',
+    unit: 'unidad',
+    unitWeight: 25,
+    per100: { kcal: 5450, protein: 142.5, carbs: 1115, fat: 71.25 },
+    notes: 'Valor estándar de tortilla de maíz (commodity), ~25 g c/u.',
+  },
+  {
     id: 'monster-ultra-white',
     name: 'Monster Ultra White (sin azúcar)',
     brand: 'Monster',
@@ -189,6 +197,24 @@ export const seedFoods: Food[] = [
     notes: '1 unidad = 1 dosis (5 g). La creatina monohidratada no aporta calorías ni macros.',
   },
 ]
+
+/** Quick substitution suggestions shown when swapping a food, with a
+ * sensible default quantity for the replacement (not just "same weight" —
+ * e.g. rice ↔ 2 tortillas isn't equal grams). */
+export const commonSubstitutes: Record<string, { foodId: string; quantity: number }[]> = {
+  'pollo-pechuga-mm': [{ foodId: 'carne-molida-90-10-mm', quantity: 120 }],
+  'carne-molida-90-10-mm': [{ foodId: 'pollo-pechuga-mm', quantity: 120 }],
+  'zarzamora-mm': [{ foodId: 'fresa-mm', quantity: 80 }],
+  'fresa-mm': [{ foodId: 'zarzamora-mm', quantity: 80 }],
+  'arroz-blanco-cocido': [
+    { foodId: 'papa-cocida', quantity: 150 },
+    { foodId: 'tortilla-maiz', quantity: 2 },
+  ],
+  'papa-cocida': [
+    { foodId: 'arroz-blanco-cocido', quantity: 85 },
+    { foodId: 'tortilla-maiz', quantity: 2 },
+  ],
+}
 
 export const seedDietTemplate: Meal[] = [
   {

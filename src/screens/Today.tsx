@@ -24,6 +24,7 @@ import {
 import { ProgressBar } from '../components/ProgressBar'
 import { FoodPicker } from '../components/FoodPicker'
 import { buildShareCard, shareCard } from '../shareCard'
+import { commonSubstitutes } from '../seedData'
 
 const SLOT_LABEL: Record<MealSlot, string> = {
   desayuno: 'Desayuno',
@@ -60,6 +61,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
   const [swapTarget, setSwapTarget] = useState<{
     slot: MealSlot
     itemId: string
+    foodId: string
     foodName: string
     macros: Macros
   } | null>(null)
@@ -328,7 +330,13 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
                     </div>
                     <button
                       onClick={() =>
-                        setSwapTarget({ slot: meal.slot, itemId: item.id, foodName: food.name, macros: itemMacros })
+                        setSwapTarget({
+                          slot: meal.slot,
+                          itemId: item.id,
+                          foodId: food.id,
+                          foodName: food.name,
+                          macros: itemMacros,
+                        })
                       }
                       className="p-1.5 text-[var(--text-faint)]"
                       aria-label="Sustituir"
@@ -391,6 +399,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
           foods={ensuredData.foods}
           title={`Sustituir "${swapTarget.foodName}"`}
           compareTo={swapTarget.macros}
+          suggestions={commonSubstitutes[swapTarget.foodId]}
           onPick={(foodId, qty) => swapItem(swapTarget.slot, swapTarget.itemId, foodId, qty)}
           onClose={() => setSwapTarget(null)}
         />

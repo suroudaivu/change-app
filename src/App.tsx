@@ -13,6 +13,11 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'ajustes', label: 'Ajustes', icon: Settings },
 ]
 
+// Nav is given this exact height (rather than letting padding size it), and
+// the scroll area reserves precisely that much space — so there's never a
+// mismatch gap between the two, whatever font rendering does to text height.
+const NAV_HEIGHT = 52
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('hoy')
   const { data, update } = useAppData()
@@ -21,7 +26,7 @@ export default function App() {
     <div className="h-full">
       <main
         className="h-full overflow-y-auto flex flex-col"
-        style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))` }}
       >
         {tab === 'hoy' && <Today data={data} update={update} onGoToBackup={() => setTab('ajustes')} />}
         {tab === 'peso' && <Peso data={data} update={update} />}
@@ -30,7 +35,7 @@ export default function App() {
 
       <nav
         className="fixed inset-x-0 bottom-0 mx-auto max-w-[480px] flex border-t border-[var(--border)] bg-[var(--bg)]"
-        style={{ paddingBottom: '4px' }}
+        style={{ height: NAV_HEIGHT, paddingBottom: '4px' }}
       >
         {TABS.map((t) => {
           const Icon = t.icon
@@ -39,7 +44,7 @@ export default function App() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-1.5"
+              className="flex-1 h-full flex flex-col items-center justify-center gap-0.5"
             >
               <Icon size={22} strokeWidth={active ? 2.3 : 1.8} color={active ? 'var(--accent)' : 'var(--text-faint)'} />
               <span
