@@ -16,11 +16,8 @@ export default defineConfig({
         name: 'Change',
         short_name: 'Change',
         description: 'Tracker personal de dieta y peso',
-        // iOS paints the strip below the home indicator in standalone mode
-        // with these, not with any CSS the page can reach — keep them the
-        // same grey as the tab bar so that strip blends into it.
-        theme_color: '#17171d',
-        background_color: '#17171d',
+        theme_color: '#0b0b0f',
+        background_color: '#0b0b0f',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/change-app/',

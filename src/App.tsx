@@ -28,7 +28,7 @@ export default function App() {
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 mx-auto max-w-[480px] flex border-t border-[var(--border)] bg-[var(--surface)]"
+        className="fixed inset-x-0 bottom-0 mx-auto max-w-[480px] flex border-t border-[var(--border)] bg-[var(--bg)]"
         style={{ paddingBottom: '4px' }}
       >
         {TABS.map((t) => (
