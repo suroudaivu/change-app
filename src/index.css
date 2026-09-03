@@ -17,6 +17,9 @@
   --accent: #0a84ff;
   --accent-bg: rgba(10, 132, 255, 0.14);
 
+  /* Matches what the translucent tab bar resolves to over the page. */
+  --nav-surface: #1c1c24;
+
   --success: #30d158;
   --warning: #ff9f0a;
   --danger: #ff453a;
@@ -40,19 +43,26 @@ html {
   background: var(--bg);
 }
 
+/* The strip iOS paints below the viewport in standalone mode takes the
+ * body's background — the one surface that reaches it (not <html>, not the
+ * manifest colors). Painting it the tab bar's tone makes the bar read as
+ * meeting the bottom edge instead of floating over dead black space. */
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--nav-surface);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top);
   overscroll-behavior-y: none;
 }
 
+/* Covers the whole viewport, top inset included, so the page itself stays
+ * dark and only the out-of-viewport strip shows the body colour. */
 #root {
   max-width: 480px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top);
 }
