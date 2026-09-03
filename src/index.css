@@ -17,11 +17,6 @@
   --accent: #0a84ff;
   --accent-bg: rgba(10, 132, 255, 0.14);
 
-  /* The strip below the viewport, which takes the body's background. Pure
-   * black rather than a tone: on the OLED screen those pixels switch off
-   * entirely, so the bottom edge disappears into the bezel instead of
-   * reading as a band under the bar. */
-  --nav-surface: #000000;
 
   --success: #30d158;
   --warning: #ff9f0a;
@@ -48,11 +43,11 @@ html {
 
 /* The strip iOS paints below the viewport in standalone mode takes the
  * body's background — the one surface that reaches it (not <html>, not the
- * manifest colors). Painting it the tab bar's tone makes the bar read as
- * meeting the bottom edge instead of floating over dead black space. */
+ * manifest colors). Matching it to the page makes the bottom edge continuous
+ * instead of stepping to a different shade. */
 body {
   margin: 0;
-  background: var(--nav-surface);
+  background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
