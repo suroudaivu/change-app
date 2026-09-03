@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAppData } from './useAppData'
 import { Today } from './screens/Today'
+import { Ajustes } from './screens/Ajustes'
 
 type Tab = 'hoy' | 'peso' | 'ajustes'
 
@@ -31,7 +32,7 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-y-auto">
         {tab === 'hoy' && <Today data={data} update={update} />}
         {tab === 'peso' && <Placeholder title="Peso" />}
-        {tab === 'ajustes' && <Placeholder title="Ajustes" />}
+        {tab === 'ajustes' && <Ajustes data={data} update={update} />}
       </main>
 
       <nav className="flex border-t border-[var(--border)] bg-[var(--surface)] pb-[env(safe-area-inset-bottom)]">
