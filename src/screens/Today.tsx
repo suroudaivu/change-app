@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import type { AppData, Macros, MealSlot } from '../types'
-import { computeDayMacros, computeMealMacros, findFood, getOrCreateDayLog, todayISO } from '../storage'
+import {
+  computeDayMacros,
+  computeMealMacros,
+  daysSinceLastExport,
+  findFood,
+  getOrCreateDayLog,
+  needsBackupReminder,
+  todayISO,
+} from '../storage'
 import { ProgressBar } from '../components/ProgressBar'
 import { FoodPicker } from '../components/FoodPicker'
+import { buildShareCard, shareCard } from '../shareCard'
 
 const SLOT_LABEL: Record<MealSlot, string> = {
   desayuno: 'Desayuno',
@@ -14,6 +23,7 @@ const SLOT_LABEL: Record<MealSlot, string> = {
 interface TodayProps {
   data: AppData
   update: (fn: (current: AppData) => AppData) => void
+  onGoToBackup: () => void
 }
 
 function shiftDate(iso: string, days: number): string {
@@ -22,9 +32,10 @@ function shiftDate(iso: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function Today({ data, update }: TodayProps) {
+export function Today({ data, update, onGoToBackup }: TodayProps) {
   const today = todayISO()
   const [date, setDate] = useState(today)
+  const [backupDismissed, setBackupDismissed] = useState(false)
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [swapTarget, setSwapTarget] = useState<{
@@ -83,6 +94,17 @@ export function Today({ data, update }: TodayProps) {
       return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
     })
     setSwapTarget(null)
+  }
+
+  async function handleShare() {
+    const latestWeight = [...ensuredData.weightLog].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
+    const blob = await buildShareCard({
+      date,
+      totals,
+      goals,
+      weightKg: latestWeight?.kg,
+    })
+    await shareCard(blob, date)
   }
 
   function updateQuantity(slot: MealSlot, itemId: string, quantity: number) {
@@ -144,11 +166,43 @@ export function Today({ data, update }: TodayProps) {
         </button>
       )}
 
+      {!backupDismissed && needsBackupReminder(ensuredData) && (
+        <div className="mx-4 mt-2 mb-1 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'var(--accent-bg)' }}>
+          <div className="flex-1">
+            <p className="text-sm text-[var(--text)]">
+              {daysSinceLastExport() === null
+                ? 'Aún no has respaldado tus datos.'
+                : `Han pasado ${daysSinceLastExport()} días desde tu último respaldo.`}
+            </p>
+            <button onClick={onGoToBackup} className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
+              Exportar ahora →
+            </button>
+          </div>
+          <button
+            onClick={() => setBackupDismissed(true)}
+            className="text-[var(--text-faint)] text-lg leading-none"
+            aria-label="Descartar"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="px-4 py-3 mb-2 bg-[var(--surface)] mx-4 rounded-2xl">
         <ProgressBar label="Calorías" consumed={totals.kcal} goal={goals.kcal} unit="kcal" color="var(--accent)" />
         <ProgressBar label="Proteína" consumed={totals.protein} goal={goals.protein} unit="g" color="var(--success)" />
         <ProgressBar label="Carbohidratos" consumed={totals.carbs} goal={goals.carbs} unit="g" color="var(--warning)" />
         <ProgressBar label="Grasas" consumed={totals.fat} goal={goals.fat} unit="g" color="#bf5af2" />
+      </div>
+
+      <div className="px-4">
+        <button
+          onClick={handleShare}
+          className="w-full py-2 rounded-xl text-sm font-medium"
+          style={{ color: 'var(--text-dim)', backgroundColor: 'var(--surface)' }}
+        >
+          Compartir resumen del día
+        </button>
       </div>
 
       {log.meals.map((meal) => {

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { AppData, Food, Goals, MealSlot } from '../types'
-import { exportData, findFood, importData, loadData } from '../storage'
+import { exportData, findFood, importData, loadData, markExported } from '../storage'
 import { FoodPicker } from '../components/FoodPicker'
 import { AddSupplement } from '../components/AddSupplement'
 
@@ -62,6 +62,7 @@ export function Ajustes({ data, update }: AjustesProps) {
     a.download = `change-backup-${stamp}.json`
     a.click()
     URL.revokeObjectURL(url)
+    markExported()
   }
 
   function handleImportFile(file: File) {

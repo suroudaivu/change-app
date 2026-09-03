@@ -105,6 +105,27 @@ export function computeDayMacros(data: AppData, log: DayLog): Macros {
   }, ZERO)
 }
 
+const LAST_EXPORT_KEY = 'change-app:lastExport'
+const BACKUP_INTERVAL_DAYS = 7
+
+export function markExported(): void {
+  localStorage.setItem(LAST_EXPORT_KEY, String(Date.now()))
+}
+
+export function daysSinceLastExport(): number | null {
+  const raw = localStorage.getItem(LAST_EXPORT_KEY)
+  if (!raw) return null
+  return Math.floor((Date.now() - Number(raw)) / 86_400_000)
+}
+
+/** True once there's data worth losing and no recent backup. */
+export function needsBackupReminder(data: AppData): boolean {
+  const hasData = data.weightLog.length > 0 || Object.keys(data.dayLogs).length > 0
+  if (!hasData) return false
+  const days = daysSinceLastExport()
+  return days === null || days >= BACKUP_INTERVAL_DAYS
+}
+
 export function exportData(): string {
   return JSON.stringify(loadData(), null, 2)
 }

@@ -22,7 +22,7 @@ export default function App() {
         className="h-full overflow-y-auto flex flex-col"
         style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom))' }}
       >
-        {tab === 'hoy' && <Today data={data} update={update} />}
+        {tab === 'hoy' && <Today data={data} update={update} onGoToBackup={() => setTab('ajustes')} />}
         {tab === 'peso' && <Peso data={data} update={update} />}
         {tab === 'ajustes' && <Ajustes data={data} update={update} />}
       </main>
