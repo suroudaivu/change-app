@@ -1,4 +1,5 @@
 import type { AppData, DayLog, Food, Macros, Meal } from './types'
+import { withSeedData } from './seedData'
 
 const STORAGE_KEY = 'change-app:data'
 const CURRENT_VERSION = 1
@@ -18,14 +19,14 @@ function emptyData(): AppData {
 
 export function loadData(): AppData {
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return emptyData()
+  if (!raw) return withSeedData(emptyData())
   try {
     const parsed = JSON.parse(raw) as AppData
     // Future migrations by version would go here.
-    return { ...emptyData(), ...parsed }
+    return withSeedData({ ...emptyData(), ...parsed })
   } catch {
     console.error('Datos corruptos en localStorage, iniciando con datos vacíos.')
-    return emptyData()
+    return withSeedData(emptyData())
   }
 }
 
