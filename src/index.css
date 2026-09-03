@@ -30,6 +30,15 @@ body,
   height: 100%;
 }
 
+/* iOS paints the area outside the viewport (the strip below the home
+ * indicator in standalone mode) with the document canvas color, which
+ * comes from <html> when it has its own background. Painting it the same
+ * grey as the tab bar makes that strip blend into the bar instead of
+ * showing as a black band. The body below keeps the real page black. */
+html {
+  background: var(--surface);
+}
+
 body {
   margin: 0;
   background: var(--bg);
