@@ -8,7 +8,7 @@ const SLOT_LABEL: Record<MealSlot, string> = {
   desayuno: 'Desayuno',
   comida: 'Comida',
   cena: 'Cena',
-  snacks: 'Snacks',
+  snacks: 'Snacks y suplementos',
 }
 
 interface TodayProps {
@@ -280,7 +280,7 @@ export function Today({ data, update }: TodayProps) {
               className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium"
               style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
             >
-              + Agregar {meal.slot === 'snacks' ? 'snack' : 'alimento'}
+              + Agregar {meal.slot === 'snacks' ? 'snack o suplemento' : 'alimento'}
             </button>
           </div>
         )

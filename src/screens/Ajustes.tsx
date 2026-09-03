@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
-import type { AppData, Goals, MealSlot } from '../types'
+import type { AppData, Food, Goals, MealSlot } from '../types'
 import { exportData, findFood, importData, loadData } from '../storage'
 import { FoodPicker } from '../components/FoodPicker'
+import { AddSupplement } from '../components/AddSupplement'
 
 const SLOT_LABEL: Record<MealSlot, string> = {
   desayuno: 'Desayuno',
@@ -21,7 +22,29 @@ export function Ajustes({ data, update }: AjustesProps) {
   const [goalsDraft, setGoalsDraft] = useState<Goals>(data.goals)
   const [goalsSaved, setGoalsSaved] = useState(false)
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [addingSupplement, setAddingSupplement] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function addSupplement(food: Food) {
+    update((current) => ({
+      ...current,
+      foods: [...current.foods, food],
+      // Also make it a one-tap chip under Hoy → Snacks y suplementos.
+      savedSnacks: [
+        ...current.savedSnacks,
+        { id: crypto.randomUUID(), foodId: food.id, quantity: 1 },
+      ],
+    }))
+    setAddingSupplement(false)
+  }
+
+  function removeSupplement(foodId: string) {
+    update((current) => ({
+      ...current,
+      foods: current.foods.filter((f) => f.id !== foodId),
+      savedSnacks: current.savedSnacks.filter((s) => s.foodId !== foodId),
+    }))
+  }
 
   function saveGoals() {
     update((current) => ({ ...current, goals: goalsDraft }))
@@ -206,20 +229,38 @@ export function Ajustes({ data, update }: AjustesProps) {
           {data.foods
             .filter((f) => f.isSupplement || f.id === 'xgear-zero-carb-choco')
             .map((f) => (
-              <div key={f.id} className="px-4 py-3">
-                <p className="text-sm text-[var(--text)]">
-                  {f.name} {f.brand && <span className="text-[var(--text-faint)]">· {f.brand}</span>}
-                </p>
-                <p className="text-xs text-[var(--text-faint)] mt-0.5">
-                  {f.isSupplement
-                    ? 'No aporta calorías ni macros.'
-                    : `1 unidad (${f.unitWeight} g) · ${f.per100.kcal / 100} kcal, ${f.per100.protein / 100} g proteína`}
-                </p>
+              <div key={f.id} className="px-4 py-3 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[var(--text)]">
+                    {f.name} {f.brand && <span className="text-[var(--text-faint)]">· {f.brand}</span>}
+                  </p>
+                  <p className="text-xs text-[var(--text-faint)] mt-0.5">
+                    {f.isSupplement
+                      ? `No aporta calorías ni macros.${f.unitWeight ? ` Dosis: ${f.unitWeight} g.` : ''}`
+                      : `1 unidad${f.unitWeight ? ` (${f.unitWeight} g)` : ''} · ${f.per100.kcal / 100} kcal, ${f.per100.protein / 100} g proteína`}
+                  </p>
+                </div>
+                {f.id.startsWith('custom-') && (
+                  <button
+                    onClick={() => removeSupplement(f.id)}
+                    className="text-[var(--text-faint)] text-lg px-2"
+                    aria-label="Eliminar suplemento"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
         </div>
+        <button
+          onClick={() => setAddingSupplement(true)}
+          className="w-full mt-2 py-2 rounded-xl text-sm font-medium"
+          style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
+        >
+          + Agregar suplemento
+        </button>
         <p className="text-xs text-[var(--text-faint)] mt-2">
-          Regístralos desde Hoy → Snacks, con los accesos rápidos.
+          Regístralos desde Hoy → Snacks y suplementos, con los accesos rápidos.
         </p>
       </div>
 
@@ -273,6 +314,10 @@ export function Ajustes({ data, update }: AjustesProps) {
           </div>
         </div>
       </div>
+
+      {addingSupplement && (
+        <AddSupplement onAdd={addSupplement} onClose={() => setAddingSupplement(false)} />
+      )}
 
       {pickerSlot && (
         <FoodPicker
