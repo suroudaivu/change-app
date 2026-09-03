@@ -4,6 +4,8 @@ import { useAppData } from './useAppData'
 import { Today } from './screens/Today'
 import { Ajustes } from './screens/Ajustes'
 import { Peso } from './screens/Peso'
+import { UndoToast } from './components/UndoToast'
+import { UpdatePrompt } from './components/UpdatePrompt'
 
 type Tab = 'hoy' | 'peso' | 'ajustes'
 
@@ -20,7 +22,7 @@ const NAV_HEIGHT = 52
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('hoy')
-  const { data, update } = useAppData()
+  const { data, update, updateUndoable, undoState, undo } = useAppData()
 
   return (
     <div className="h-full">
@@ -28,10 +30,25 @@ export default function App() {
         className="h-full overflow-y-auto flex flex-col"
         style={{ paddingBottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))` }}
       >
-        {tab === 'hoy' && <Today data={data} update={update} onGoToBackup={() => setTab('ajustes')} />}
-        {tab === 'peso' && <Peso data={data} update={update} />}
-        {tab === 'ajustes' && <Ajustes data={data} update={update} />}
+        {tab === 'hoy' && (
+          <Today
+            data={data}
+            update={update}
+            updateUndoable={updateUndoable}
+            onGoToBackup={() => setTab('ajustes')}
+          />
+        )}
+        {tab === 'peso' && <Peso data={data} update={update} updateUndoable={updateUndoable} />}
+        {tab === 'ajustes' && (
+          <Ajustes data={data} update={update} updateUndoable={updateUndoable} />
+        )}
       </main>
+
+      {undoState ? (
+        <UndoToast message={undoState.message} onUndo={undo} bottomOffset={NAV_HEIGHT} />
+      ) : (
+        <UpdatePrompt bottomOffset={NAV_HEIGHT} />
+      )}
 
       <nav
         className="fixed inset-x-0 bottom-0 mx-auto max-w-[480px] flex border-t border-[var(--border)] bg-[var(--bg)]"

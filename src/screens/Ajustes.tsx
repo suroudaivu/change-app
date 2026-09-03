@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import type { AppData, Food, Goals, MealSlot } from '../types'
 import {
   applyBackup,
+  computeMealMacros,
   exportData,
   findFood,
   inspectBackup,
@@ -23,6 +25,21 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
+/** Shows a base-diet total next to its goal, tinted when it's well off. */
+function MacroTotal({ label, value, goal }: { label: string; value: number; goal: number }) {
+  const rounded = Math.round(value)
+  const offBy = goal > 0 ? Math.abs(value - goal) / goal : 0
+  const color = offBy > 0.1 ? 'var(--warning)' : 'var(--text)'
+  return (
+    <span>
+      <span className="font-semibold" style={{ color }}>
+        {rounded}
+      </span>
+      <span className="text-[var(--text-faint)]"> / {Math.round(goal)} {label}</span>
+    </span>
+  )
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between py-0.5">
@@ -35,9 +52,10 @@ function Row({ label, value }: { label: string; value: string }) {
 interface AjustesProps {
   data: AppData
   update: (fn: (current: AppData) => AppData) => void
+  updateUndoable: (fn: (current: AppData) => AppData, message: string) => void
 }
 
-export function Ajustes({ data, update }: AjustesProps) {
+export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [goalsDraft, setGoalsDraft] = useState<Goals>(data.goals)
@@ -49,6 +67,21 @@ export function Ajustes({ data, update }: AjustesProps) {
   } | null>(null)
   const [addingSupplement, setAddingSupplement] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // What your base diet adds up to, so edits can be checked against goals
+  // without leaving the screen.
+  const templateTotals = data.dietTemplate.meals.reduce(
+    (total, meal) => {
+      const m = computeMealMacros(data, meal)
+      return {
+        kcal: total.kcal + m.kcal,
+        protein: total.protein + m.protein,
+        carbs: total.carbs + m.carbs,
+        fat: total.fat + m.fat,
+      }
+    },
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  )
 
   function addSupplement(food: Food) {
     update((current) => ({
@@ -63,12 +96,15 @@ export function Ajustes({ data, update }: AjustesProps) {
     setAddingSupplement(false)
   }
 
-  function removeSupplement(foodId: string) {
-    update((current) => ({
-      ...current,
-      foods: current.foods.filter((f) => f.id !== foodId),
-      savedSnacks: current.savedSnacks.filter((s) => s.foodId !== foodId),
-    }))
+  function removeSupplement(foodId: string, name: string) {
+    updateUndoable(
+      (current) => ({
+        ...current,
+        foods: current.foods.filter((f) => f.id !== foodId),
+        savedSnacks: current.savedSnacks.filter((s) => s.foodId !== foodId),
+      }),
+      `${name} eliminado`,
+    )
   }
 
   function saveGoals() {
@@ -127,15 +163,18 @@ export function Ajustes({ data, update }: AjustesProps) {
     setPickerSlot(null)
   }
 
-  function removeTemplateItem(slot: MealSlot, itemId: string) {
-    update((current) => ({
-      ...current,
-      dietTemplate: {
-        meals: current.dietTemplate.meals.map((m) =>
-          m.slot === slot ? { ...m, items: m.items.filter((i) => i.id !== itemId) } : m,
-        ),
-      },
-    }))
+  function removeTemplateItem(slot: MealSlot, itemId: string, foodName: string) {
+    updateUndoable(
+      (current) => ({
+        ...current,
+        dietTemplate: {
+          meals: current.dietTemplate.meals.map((m) =>
+            m.slot === slot ? { ...m, items: m.items.filter((i) => i.id !== itemId) } : m,
+          ),
+        },
+      }),
+      `${foodName} quitado de tu dieta`,
+    )
   }
 
   function updateTemplateQuantity(slot: MealSlot, itemId: string, quantity: number) {
@@ -196,11 +235,26 @@ export function Ajustes({ data, update }: AjustesProps) {
           pantalla Hoy.
         </p>
 
+        <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: 'var(--accent-bg)' }}>
+          <p className="text-xs text-[var(--text-dim)] mb-1">Total de tu dieta base</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <MacroTotal label="kcal" value={templateTotals.kcal} goal={data.goals.kcal} />
+            <MacroTotal label="P" value={templateTotals.protein} goal={data.goals.protein} />
+            <MacroTotal label="C" value={templateTotals.carbs} goal={data.goals.carbs} />
+            <MacroTotal label="G" value={templateTotals.fat} goal={data.goals.fat} />
+          </div>
+        </div>
+
         {data.dietTemplate.meals
           .filter((m) => m.slot !== 'snacks')
           .map((meal) => (
             <div key={meal.id} className="mb-4">
-              <h3 className="text-sm font-semibold text-[var(--text-dim)] mb-2">{SLOT_LABEL[meal.slot]}</h3>
+              <div className="flex justify-between items-baseline mb-2">
+                <h3 className="text-sm font-semibold text-[var(--text-dim)]">{SLOT_LABEL[meal.slot]}</h3>
+                <span className="text-xs text-[var(--text-faint)]">
+                  {Math.round(computeMealMacros(data, meal).kcal)} kcal
+                </span>
+              </div>
               <div className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]">
                 {meal.items.length === 0 && (
                   <p className="px-4 py-3 text-sm text-[var(--text-faint)]">Sin alimentos</p>
@@ -237,11 +291,11 @@ export function Ajustes({ data, update }: AjustesProps) {
                         )}
                       </div>
                       <button
-                        onClick={() => removeTemplateItem(meal.slot, item.id)}
-                        className="text-[var(--text-faint)] text-lg px-2"
+                        onClick={() => removeTemplateItem(meal.slot, item.id, food.name)}
+                        className="w-11 h-11 -mr-2 flex items-center justify-center text-[var(--text-faint)] shrink-0"
                         aria-label="Quitar"
                       >
-                        ×
+                        <X size={18} />
                       </button>
                     </div>
                   )
@@ -249,7 +303,7 @@ export function Ajustes({ data, update }: AjustesProps) {
               </div>
               <button
                 onClick={() => setPickerSlot(meal.slot)}
-                className="w-full mt-2 py-2 rounded-xl text-sm font-medium"
+                className="w-full mt-2 h-11 rounded-xl text-sm font-medium"
                 style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
               >
                 + Agregar alimento
@@ -277,11 +331,11 @@ export function Ajustes({ data, update }: AjustesProps) {
                 </div>
                 {f.id.startsWith('custom-') && (
                   <button
-                    onClick={() => removeSupplement(f.id)}
-                    className="text-[var(--text-faint)] text-lg px-2"
+                    onClick={() => removeSupplement(f.id, f.name)}
+                    className="w-11 h-11 -mr-2 flex items-center justify-center text-[var(--text-faint)] shrink-0"
                     aria-label="Eliminar suplemento"
                   >
-                    ×
+                    <X size={18} />
                   </button>
                 )}
               </div>
@@ -289,7 +343,7 @@ export function Ajustes({ data, update }: AjustesProps) {
         </div>
         <button
           onClick={() => setAddingSupplement(true)}
-          className="w-full mt-2 py-2 rounded-xl text-sm font-medium"
+          className="w-full mt-2 h-11 rounded-xl text-sm font-medium"
           style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
         >
           + Agregar suplemento

@@ -9,6 +9,7 @@ import {
   Filler,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { X } from 'lucide-react'
 import type { AppData } from '../types'
 import { todayISO } from '../storage'
 
@@ -17,7 +18,16 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 interface PesoProps {
   data: AppData
   update: (fn: (current: AppData) => AppData) => void
+  updateUndoable: (fn: (current: AppData) => AppData, message: string) => void
 }
+
+const RANGES = [
+  { id: '30', label: '30 días', days: 30 },
+  { id: '90', label: '90 días', days: 90 },
+  { id: 'all', label: 'Todo', days: null },
+] as const
+
+type RangeId = (typeof RANGES)[number]['id']
 
 function daysAgoISO(n: number): string {
   const d = new Date()
@@ -42,14 +52,23 @@ function average(values: number[]): number | null {
   return values.reduce((a, b) => a + b, 0) / values.length
 }
 
-export function Peso({ data, update }: PesoProps) {
+export function Peso({ data, update, updateUndoable }: PesoProps) {
   const [kgInput, setKgInput] = useState('')
+  const [range, setRange] = useState<RangeId>('30')
   const today = todayISO()
 
   const sorted = useMemo(
     () => [...data.weightLog].sort((a, b) => a.date.localeCompare(b.date)),
     [data.weightLog],
   )
+
+  // Stats always use the full history; only the chart honours the range.
+  const charted = useMemo(() => {
+    const days = RANGES.find((r) => r.id === range)?.days
+    if (!days) return sorted
+    const from = daysAgoISO(days)
+    return sorted.filter((e) => e.date >= from)
+  }, [sorted, range])
 
   const current = sorted.at(-1)
   const initial = sorted[0]
@@ -89,22 +108,25 @@ export function Peso({ data, update }: PesoProps) {
     setKgInput('')
   }
 
-  function deleteEntry(date: string) {
-    update((current) => ({ ...current, weightLog: current.weightLog.filter((e) => e.date !== date) }))
+  function deleteEntry(date: string, kg: number) {
+    updateUndoable(
+      (current) => ({ ...current, weightLog: current.weightLog.filter((e) => e.date !== date) }),
+      `Registro de ${kg} kg eliminado`,
+    )
   }
 
   const chartData = {
-    labels: sorted.map((e) =>
+    labels: charted.map((e) =>
       new Date(e.date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }),
     ),
     datasets: [
       {
-        data: sorted.map((e) => e.kg),
+        data: charted.map((e) => e.kg),
         borderColor: '#0a84ff',
         backgroundColor: 'rgba(10,132,255,0.12)',
         fill: true,
         tension: 0.3,
-        pointRadius: sorted.length > 30 ? 0 : 3,
+        pointRadius: charted.length > 40 ? 0 : 3,
         pointBackgroundColor: '#0a84ff',
       },
     ],
@@ -146,19 +168,52 @@ export function Peso({ data, update }: PesoProps) {
 
       {sorted.length > 0 && (
         <div className="px-4 mt-4">
+          <div className="flex gap-2 mb-2">
+            {RANGES.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setRange(r.id)}
+                className="px-3 h-9 rounded-full text-xs font-medium"
+                style={
+                  range === r.id
+                    ? { backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }
+                    : { backgroundColor: 'var(--surface)', color: 'var(--text-faint)' }
+                }
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <div className="rounded-2xl bg-[var(--surface)] p-4" style={{ height: 200 }}>
-            <Line
-              data={chartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { display: sorted.length <= 14, ticks: { color: '#66666f', font: { size: 10 } }, grid: { display: false } },
-                  y: { ticks: { color: '#66666f', font: { size: 10 } }, grid: { color: '#2a2a33' } },
-                },
-              }}
-            />
+            {charted.length === 0 ? (
+              <p className="h-full flex items-center justify-center text-sm text-[var(--text-faint)]">
+                Sin registros en este rango
+              </p>
+            ) : (
+              <Line
+                data={chartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    x: {
+                      // Always keep dates readable: thin the ticks out instead
+                      // of hiding the axis once there's a lot of history.
+                      ticks: {
+                        color: '#66666f',
+                        font: { size: 10 },
+                        maxTicksLimit: 6,
+                        maxRotation: 0,
+                        autoSkip: true,
+                      },
+                      grid: { display: false },
+                    },
+                    y: { ticks: { color: '#66666f', font: { size: 10 } }, grid: { color: '#2a2a33' } },
+                  },
+                }}
+              />
+            )}
           </div>
         </div>
       )}
@@ -213,14 +268,14 @@ export function Peso({ data, update }: PesoProps) {
                     month: 'short',
                   })}
                 </span>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <span className="text-sm text-[var(--text-dim)]">{e.kg} kg</span>
                   <button
-                    onClick={() => deleteEntry(e.date)}
-                    className="text-[var(--text-faint)] text-lg px-1"
+                    onClick={() => deleteEntry(e.date, e.kg)}
+                    className="w-11 h-11 -mr-3 flex items-center justify-center text-[var(--text-faint)]"
                     aria-label="Eliminar"
                   >
-                    ×
+                    <X size={18} />
                   </button>
                 </div>
               </div>

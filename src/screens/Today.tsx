@@ -8,6 +8,7 @@ import {
   Coffee,
   Dumbbell,
   Moon,
+  Pencil,
   UtensilsCrossed,
   X,
   type LucideIcon,
@@ -44,6 +45,7 @@ const SLOT_ICON: Record<MealSlot, LucideIcon> = {
 interface TodayProps {
   data: AppData
   update: (fn: (current: AppData) => AppData) => void
+  updateUndoable: (fn: (current: AppData) => AppData, message: string) => void
   onGoToBackup: () => void
 }
 
@@ -53,7 +55,7 @@ function shiftDate(iso: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function Today({ data, update, onGoToBackup }: TodayProps) {
+export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps) {
   const today = todayISO()
   const [date, setDate] = useState(today)
   const [backupDismissed, setBackupDismissed] = useState(false)
@@ -105,17 +107,20 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
   /** Applies a change to the day being viewed, persisting it. An unvisited
    * day starts from the diet template only if it's today — a past day stays
    * empty unless it was explicitly filled in. */
-  function mutateDay(fn: (log: DayLog) => DayLog) {
-    update((current) => {
-      const base =
-        current.dayLogs[date] ??
-        (date === today ? buildDayFromTemplate(current, date) : { date, meals: [] })
+  function mutateDay(fn: (log: DayLog) => DayLog, undoMessage?: string) {
+    const apply = (current: AppData) => {
+      // Falls back to the very log being rendered, not a freshly built one:
+      // a rebuild would carry new item ids and edits keyed to what's on
+      // screen (delete, swap, quantity) would silently miss.
+      const base = current.dayLogs[date] ?? log
       return { ...current, dayLogs: { ...current.dayLogs, [date]: fn(base) } }
-    })
+    }
+    if (undoMessage) updateUndoable(apply, undoMessage)
+    else update(apply)
   }
 
-  function mutateMeals(fn: (meals: DayLog['meals']) => DayLog['meals']) {
-    mutateDay((log) => ({ ...log, meals: fn(log.meals) }))
+  function mutateMeals(fn: (meals: DayLog['meals']) => DayLog['meals'], undoMessage?: string) {
+    mutateDay((log) => ({ ...log, meals: fn(log.meals) }), undoMessage)
   }
 
   function addItem(slot: MealSlot, foodId: string, quantity: number) {
@@ -129,14 +134,16 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
     setPickerSlot(null)
   }
 
-  function removeItem(slot: MealSlot, itemId: string) {
-    mutateMeals((meals) =>
-      meals.map((m) => {
-        if (m.slot !== slot) return m
-        const items = m.items.filter((i) => i.id !== itemId)
-        // A meal with nothing left in it can't meaningfully stay "comido".
-        return { ...m, items, eaten: items.length === 0 ? false : m.eaten }
-      }),
+  function removeItem(slot: MealSlot, itemId: string, foodName: string) {
+    mutateMeals(
+      (meals) =>
+        meals.map((m) => {
+          if (m.slot !== slot) return m
+          const items = m.items.filter((i) => i.id !== itemId)
+          // A meal with nothing left in it can't meaningfully stay "comido".
+          return { ...m, items, eaten: items.length === 0 ? false : m.eaten }
+        }),
+      `${foodName} eliminado`,
     )
   }
 
@@ -197,7 +204,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
         <div className="flex items-center gap-1">
           <button
             onClick={toggleGymDay}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
+            className="w-10 h-10 rounded-full flex items-center justify-center"
             style={{ backgroundColor: log.gymDay ? 'var(--accent-bg)' : 'var(--surface)' }}
             aria-label="Marcar día de gym"
             title="Fui al gym"
@@ -206,7 +213,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
           </button>
           <button
             onClick={() => setDate((d) => shiftDate(d, -1))}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
+            className="w-10 h-10 rounded-full flex items-center justify-center"
             style={{ backgroundColor: 'var(--surface)' }}
             aria-label="Día anterior"
           >
@@ -215,7 +222,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
           <button
             onClick={() => setDate((d) => shiftDate(d, 1))}
             disabled={date === today}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
+            className="w-10 h-10 rounded-full flex items-center justify-center"
             style={{
               backgroundColor: 'var(--surface)',
               opacity: date === today ? 0.4 : 1,
@@ -250,10 +257,10 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
           </div>
           <button
             onClick={() => setBackupDismissed(true)}
-            className="text-[var(--text-faint)] text-lg leading-none"
+            className="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center text-[var(--text-faint)] shrink-0"
             aria-label="Descartar"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
       )}
@@ -268,7 +275,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
       <div className="px-4">
         <button
           onClick={handleShare}
-          className="w-full py-2 rounded-xl text-sm font-medium"
+          className="w-full h-11 rounded-xl text-sm font-medium"
           style={{ color: 'var(--text-dim)', backgroundColor: 'var(--surface)' }}
         >
           Compartir resumen del día
@@ -322,7 +329,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
             {meal.slot !== 'snacks' && !isEmpty && (
               <button
                 onClick={() => toggleEaten(meal.slot)}
-                className="w-full mb-2 py-2 rounded-xl text-sm font-medium border"
+                className="w-full mb-2 h-11 rounded-xl text-sm font-medium border"
                 style={
                   isPending
                     ? { color: 'var(--accent)', borderColor: 'var(--accent)', backgroundColor: 'transparent' }
@@ -372,9 +379,10 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
                       ) : (
                         <button
                           onClick={() => setEditingItem(item.id)}
-                          className="text-xs text-[var(--text-faint)]"
+                          className="flex items-center gap-1 text-xs text-[var(--text-faint)] py-2 -my-1"
                         >
                           {item.quantity} {food.unit === 'unidad' ? 'u' : food.unit} · {kcal} kcal
+                          <Pencil size={11} />
                         </button>
                       )}
                     </div>
@@ -388,18 +396,18 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
                           macros: itemMacros,
                         })
                       }
-                      className="p-1.5 text-[var(--text-faint)]"
+                      className="w-11 h-11 flex items-center justify-center text-[var(--text-faint)] shrink-0"
                       aria-label="Sustituir"
                       title="Sustituir"
                     >
-                      <ArrowLeftRight size={15} />
+                      <ArrowLeftRight size={16} />
                     </button>
                     <button
-                      onClick={() => removeItem(meal.slot, item.id)}
-                      className="p-1.5 text-[var(--text-faint)]"
+                      onClick={() => removeItem(meal.slot, item.id, food.name)}
+                      className="w-11 h-11 flex items-center justify-center text-[var(--text-faint)] shrink-0"
                       aria-label="Quitar"
                     >
-                      <X size={17} />
+                      <X size={18} />
                     </button>
                   </div>
                 )
@@ -415,7 +423,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
                     <button
                       key={snack.id}
                       onClick={() => addItem('snacks', snack.foodId, snack.quantity)}
-                      className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap"
+                      className="shrink-0 px-3.5 h-10 rounded-full text-xs font-medium whitespace-nowrap"
                       style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text)' }}
                     >
                       + {food.name}
@@ -427,7 +435,7 @@ export function Today({ data, update, onGoToBackup }: TodayProps) {
 
             <button
               onClick={() => setPickerSlot(meal.slot)}
-              className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium"
+              className="w-full mt-2 h-11 rounded-xl text-sm font-medium"
               style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
             >
               + Agregar {meal.slot === 'snacks' ? 'snack o suplemento' : 'alimento'}
