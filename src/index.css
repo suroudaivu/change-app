@@ -17,11 +17,11 @@
   --accent: #0a84ff;
   --accent-bg: rgba(10, 132, 255, 0.14);
 
-  /* The strip below the viewport. The tab bar's raw rgba suggests ~#1a1a21,
-   * but its backdrop blur samples the near-black page behind it, so it reads
-   * darker than that in practice — matching the raw value looked like a lit
-   * band. Kept a step above the page instead of level with the bar. */
-  --nav-surface: #131318;
+  /* The strip below the viewport, which takes the body's background. Pure
+   * black rather than a tone: on the OLED screen those pixels switch off
+   * entirely, so the bottom edge disappears into the bezel instead of
+   * reading as a band under the bar. */
+  --nav-surface: #000000;
 
   --success: #30d158;
   --warning: #ff9f0a;
