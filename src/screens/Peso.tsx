@@ -136,44 +136,60 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6">
-      <div className="px-4 pt-4">
-        <h1 className="text-2xl font-semibold text-[var(--text)]">Peso</h1>
+      <div className="px-5 pt-4">
+        <h1 className="text-[28px] leading-tight font-bold tracking-tight text-[var(--text)]">Peso</h1>
       </div>
 
-      <div className="px-4 mt-3">
-        <div className="rounded-2xl bg-[var(--surface)] p-4 flex gap-2 items-end">
-          <label className="flex-1">
-            <span className="text-xs text-[var(--text-faint)]">
-              {todayEntry ? 'Actualizar peso de hoy' : 'Registrar peso de hoy'} (kg)
-            </span>
+      {/* Mirrors Hoy: the number you came to see leads, the action follows. */}
+      <div className="px-5 mt-4">
+        <div className="rounded-3xl bg-[var(--surface)] px-5 pt-5 pb-4">
+          <p className="text-xs font-medium text-[var(--text-faint)] mb-0.5">
+            {current ? 'Peso actual' : 'Sin registros'}
+          </p>
+          <div className="flex items-end justify-between mb-4">
+            <p className="text-[44px] leading-none font-bold tracking-tight tabular-nums text-[var(--text)]">
+              {current ? current.kg : '—'}
+              {current && <span className="text-xl font-semibold text-[var(--text-faint)] ml-1">kg</span>}
+            </p>
+            {initial && current && current.kg !== initial.kg && (
+              <p
+                className="text-sm font-semibold tabular-nums pb-1"
+                style={{ color: current.kg < initial.kg ? 'var(--success)' : 'var(--warning)' }}
+              >
+                {current.kg < initial.kg ? '↓' : '↑'} {Math.abs(current.kg - initial.kg).toFixed(1)} kg
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-2 items-center pt-4 border-t border-[var(--border)]">
             <input
               type="number"
               inputMode="decimal"
               step="0.1"
               value={kgInput}
               onChange={(e) => setKgInput(e.target.value)}
-              placeholder={todayEntry ? String(todayEntry.kg) : '0.0'}
-              className="w-full bg-[var(--surface-2)] rounded-xl px-3 py-2.5 mt-1 text-[var(--text)] outline-none"
+              placeholder={todayEntry ? `Hoy: ${todayEntry.kg} kg` : 'Registrar peso de hoy'}
+              className="flex-1 min-w-0 bg-[var(--surface-2)] rounded-xl px-3.5 h-11 text-[var(--text)] placeholder:text-[var(--text-faint)] outline-none"
             />
-          </label>
-          <button
-            onClick={saveWeight}
-            className="py-2.5 px-4 rounded-xl font-medium text-white shrink-0"
-            style={{ backgroundColor: 'var(--accent)' }}
-          >
-            Guardar
-          </button>
+            <button
+              onClick={saveWeight}
+              className="h-11 px-4 rounded-xl font-semibold text-white shrink-0 active:scale-95 transition-transform"
+              style={{ backgroundColor: 'var(--accent)' }}
+            >
+              {todayEntry ? 'Actualizar' : 'Guardar'}
+            </button>
+          </div>
         </div>
       </div>
 
       {sorted.length > 0 && (
-        <div className="px-4 mt-4">
+        <div className="px-5 mt-4">
           <div className="flex gap-2 mb-2">
             {RANGES.map((r) => (
               <button
                 key={r.id}
                 onClick={() => setRange(r.id)}
-                className="px-3 h-9 rounded-full text-xs font-medium"
+                className="px-3.5 h-9 rounded-full text-xs font-semibold active:scale-95 transition-all"
                 style={
                   range === r.id
                     ? { backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }
@@ -184,7 +200,7 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
               </button>
             ))}
           </div>
-          <div className="rounded-2xl bg-[var(--surface)] p-4" style={{ height: 200 }}>
+          <div className="rounded-3xl bg-[var(--surface)] p-4" style={{ height: 200 }}>
             {charted.length === 0 ? (
               <p className="h-full flex items-center justify-center text-sm text-[var(--text-faint)]">
                 Sin registros en este rango
@@ -219,63 +235,58 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
       )}
 
       {sorted.length > 0 && (
-        <div className="px-4 mt-4 grid grid-cols-2 gap-2">
-          <StatCard label="Peso actual" value={current ? `${current.kg} kg` : '—'} />
-          <StatCard label="Peso inicial" value={initial ? `${initial.kg} kg` : '—'} />
-          <StatCard
-            label="Diferencia total"
-            value={initial && current ? `${(current.kg - initial.kg).toFixed(1)} kg` : '—'}
-            color={initial && current && current.kg < initial.kg ? 'var(--success)' : undefined}
-          />
-          <StatCard
-            label="Últimos 7 días"
-            value={sevenDaysAgo && current ? `${(current.kg - sevenDaysAgo.kg).toFixed(1)} kg` : '—'}
-            color={sevenDaysAgo && current && current.kg < sevenDaysAgo.kg ? 'var(--success)' : undefined}
-          />
-        </div>
-      )}
-
-      {sorted.length > 0 && (
-        <div className="px-4 mt-2">
-          <div className="rounded-2xl bg-[var(--surface)] px-4 py-3">
-            <p className="text-xs text-[var(--text-faint)] mb-0.5">Tendencia</p>
-            <p className="text-sm font-medium" style={{ color: trendColor }}>
+        <div className="px-5 mt-4">
+          <div className="rounded-3xl bg-[var(--surface)] px-5 py-4">
+            <p className="text-sm font-semibold mb-1" style={{ color: trendColor }}>
               {trendLabel}
             </p>
-            <p className="text-[11px] text-[var(--text-faint)] mt-1">
-              Comparamos el promedio de esta semana contra la anterior — un solo día no cambia la tendencia.
+            <p className="text-xs text-[var(--text-faint)] leading-relaxed">
+              Comparamos el promedio de esta semana contra la anterior — un solo día no cambia la
+              tendencia.
             </p>
+            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-[var(--border)]">
+              <Stat label="Peso inicial" value={initial ? `${initial.kg} kg` : '—'} />
+              <Stat
+                label="Últimos 7 días"
+                value={sevenDaysAgo && current ? `${(current.kg - sevenDaysAgo.kg).toFixed(1)} kg` : '—'}
+                color={
+                  sevenDaysAgo && current && current.kg < sevenDaysAgo.kg ? 'var(--success)' : undefined
+                }
+              />
+            </div>
           </div>
         </div>
       )}
 
       {sorted.length === 0 && (
-        <p className="px-4 mt-8 text-center text-sm text-[var(--text-faint)]">
+        <p className="px-8 mt-8 text-center text-sm text-[var(--text-faint)] leading-relaxed">
           Registra tu primer peso para empezar a ver tu evolución.
         </p>
       )}
 
       {sorted.length > 0 && (
-        <div className="px-4 mt-4">
-          <h2 className="text-sm font-semibold text-[var(--text-dim)] mb-2">Historial</h2>
+        <div className="px-5 mt-6">
+          <h2 className="text-[15px] font-semibold text-[var(--text)] mb-2.5">Historial</h2>
           <div className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]">
             {[...sorted].reverse().slice(0, 30).map((e) => (
-              <div key={e.date} className="px-4 py-2.5 flex justify-between items-center">
-                <span className="text-sm text-[var(--text)]">
+              <div key={e.date} className="pl-4 pr-1 py-1 flex justify-between items-center">
+                <span className="text-sm text-[var(--text-dim)]">
                   {new Date(e.date + 'T00:00:00').toLocaleDateString('es-MX', {
                     weekday: 'short',
                     day: 'numeric',
                     month: 'short',
                   })}
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[var(--text-dim)]">{e.kg} kg</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-semibold text-[var(--text)] tabular-nums">
+                    {e.kg} kg
+                  </span>
                   <button
                     onClick={() => deleteEntry(e.date, e.kg)}
-                    className="w-11 h-11 -mr-3 flex items-center justify-center text-[var(--text-faint)]"
+                    className="w-11 h-11 flex items-center justify-center text-[var(--text-faint)] active:scale-90 transition-transform"
                     aria-label="Eliminar"
                   >
-                    <X size={18} />
+                    <X size={17} />
                   </button>
                 </div>
               </div>
@@ -287,11 +298,11 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: string; color?: string }) {
+function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-2xl bg-[var(--surface)] px-4 py-3">
-      <p className="text-xs text-[var(--text-faint)] mb-0.5">{label}</p>
-      <p className="text-lg font-semibold" style={{ color: color ?? 'var(--text)' }}>
+    <div>
+      <p className="text-xs text-[var(--text-faint)] mb-1">{label}</p>
+      <p className="text-lg font-semibold tabular-nums" style={{ color: color ?? 'var(--text)' }}>
         {value}
       </p>
     </div>

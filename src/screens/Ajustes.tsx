@@ -27,16 +27,17 @@ function plural(n: number, one: string, many: string): string {
 
 /** Shows a base-diet total next to its goal, tinted when it's well off. */
 function MacroTotal({ label, value, goal }: { label: string; value: number; goal: number }) {
-  const rounded = Math.round(value)
   const offBy = goal > 0 ? Math.abs(value - goal) / goal : 0
   const color = offBy > 0.1 ? 'var(--warning)' : 'var(--text)'
   return (
-    <span>
-      <span className="font-semibold" style={{ color }}>
-        {rounded}
-      </span>
-      <span className="text-[var(--text-faint)]"> / {Math.round(goal)} {label}</span>
-    </span>
+    <div>
+      <p className="text-[15px] font-semibold tabular-nums leading-tight" style={{ color }}>
+        {Math.round(value)}
+      </p>
+      <p className="text-[11px] text-[var(--text-faint)] tabular-nums">
+        de {Math.round(goal)} {label}
+      </p>
+    </div>
   )
 }
 
@@ -111,6 +112,10 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
       `${name} eliminado`,
     )
   }
+
+  const goalsDirty = (['kcal', 'protein', 'carbs', 'fat'] as const).some(
+    (k) => goalsDraft[k] !== data.goals[k],
+  )
 
   function saveGoals() {
     update((current) => ({ ...current, goals: goalsDraft }))
@@ -197,13 +202,13 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6">
-      <div className="px-4 pt-4 mb-2">
-        <h1 className="text-2xl font-semibold text-[var(--text)]">Ajustes</h1>
+      <div className="px-5 pt-4 mb-2">
+        <h1 className="text-[28px] leading-tight font-bold tracking-tight text-[var(--text)]">Ajustes</h1>
       </div>
 
-      <div className="px-4 mb-6">
-        <h2 className="text-base font-semibold text-[var(--text)] mb-2">Objetivos diarios</h2>
-        <div className="rounded-2xl bg-[var(--surface)] p-4 grid grid-cols-2 gap-3">
+      <div className="px-5 mb-7">
+        <h2 className="text-[15px] font-semibold text-[var(--text)] mb-2.5">Objetivos diarios</h2>
+        <div className="rounded-3xl bg-[var(--surface)] p-4 grid grid-cols-2 gap-3">
           {(
             [
               ['kcal', 'Calorías'],
@@ -224,29 +229,38 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
             </label>
           ))}
         </div>
-        <button
-          onClick={saveGoals}
-          className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium text-white"
-          style={{ backgroundColor: goalsSaved ? 'var(--success)' : 'var(--accent)' }}
-        >
-          {goalsSaved ? '✓ Guardado' : 'Guardar objetivos'}
-        </button>
+        {/* Only surfaces once something actually changed — a permanent bright
+            CTA would be the loudest thing on screen for a rare action. */}
+        {(goalsDirty || goalsSaved) && (
+          <button
+            onClick={saveGoals}
+            disabled={goalsSaved}
+            className="w-full mt-2 h-11 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
+            style={
+              goalsSaved
+                ? { color: 'var(--success)', backgroundColor: 'rgba(48,209,88,0.14)' }
+                : { color: '#fff', backgroundColor: 'var(--accent)' }
+            }
+          >
+            {goalsSaved ? '✓ Guardado' : 'Guardar cambios'}
+          </button>
+        )}
       </div>
 
-      <div className="px-4 mb-4">
-        <h2 className="text-base font-semibold text-[var(--text)] mb-1">Mi dieta</h2>
+      <div className="px-5 mb-7">
+        <h2 className="text-[15px] font-semibold text-[var(--text)] mb-1">Mi dieta</h2>
         <p className="text-xs text-[var(--text-faint)] mb-3">
           Esto es tu dieta base. Cambios aquí afectan todos los días futuros — para ajustar solo hoy, hazlo desde la
           pantalla Hoy.
         </p>
 
-        <div className="rounded-2xl px-4 py-3 mb-4" style={{ backgroundColor: 'var(--accent-bg)' }}>
-          <p className="text-xs text-[var(--text-dim)] mb-1">Total de tu dieta base</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <div className="rounded-2xl bg-[var(--surface)] px-4 py-3.5 mb-5">
+          <p className="text-xs text-[var(--text-faint)] mb-2.5">Total de tu dieta base</p>
+          <div className="grid grid-cols-4 gap-2">
             <MacroTotal label="kcal" value={templateTotals.kcal} goal={data.goals.kcal} />
-            <MacroTotal label="P" value={templateTotals.protein} goal={data.goals.protein} />
-            <MacroTotal label="C" value={templateTotals.carbs} goal={data.goals.carbs} />
-            <MacroTotal label="G" value={templateTotals.fat} goal={data.goals.fat} />
+            <MacroTotal label="prot" value={templateTotals.protein} goal={data.goals.protein} />
+            <MacroTotal label="carbs" value={templateTotals.carbs} goal={data.goals.carbs} />
+            <MacroTotal label="gras" value={templateTotals.fat} goal={data.goals.fat} />
           </div>
         </div>
 
@@ -317,8 +331,8 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
           ))}
       </div>
 
-      <div className="px-4 mb-6">
-        <h2 className="text-base font-semibold text-[var(--text)] mb-2">Suplementos</h2>
+      <div className="px-5 mb-7">
+        <h2 className="text-[15px] font-semibold text-[var(--text)] mb-2.5">Suplementos</h2>
         <div className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]">
           {data.foods
             .filter((f) => f.isSupplement || f.id === 'xgear-zero-carb-choco')
@@ -367,8 +381,8 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
         </p>
       </div>
 
-      <div className="px-4 mb-6">
-        <h2 className="text-base font-semibold text-[var(--text)] mb-2">Respaldo de datos</h2>
+      <div className="px-5 mb-7">
+        <h2 className="text-[15px] font-semibold text-[var(--text)] mb-2.5">Respaldo de datos</h2>
         <div className="rounded-2xl bg-[var(--surface)] p-4 flex flex-col gap-3">
           <div>
             <p className="text-sm text-[var(--text)] mb-1">Exportar</p>

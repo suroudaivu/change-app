@@ -3,12 +3,16 @@ import {
   ArrowLeftRight,
   Apple,
   CalendarPlus,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
   Coffee,
   Dumbbell,
   Moon,
   Pencil,
+  Share,
+  ShieldAlert,
   UtensilsCrossed,
   X,
   type LucideIcon,
@@ -23,7 +27,7 @@ import {
   needsBackupReminder,
   todayISO,
 } from '../storage'
-import { ProgressBar } from '../components/ProgressBar'
+import { DaySummary } from '../components/DaySummary'
 import { FoodPicker } from '../components/FoodPicker'
 import { buildShareCard, shareCard } from '../shareCard'
 import { commonSubstitutes } from '../seedData'
@@ -53,6 +57,14 @@ function shiftDate(iso: string, days: number): string {
   const d = new Date(iso + 'T00:00:00')
   d.setDate(d.getDate() + days)
   return d.toISOString().slice(0, 10)
+}
+
+function weekdayOf(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long' })
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps) {
@@ -198,98 +210,96 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
 
   return (
     <div className="flex-1 overflow-y-auto pb-6">
-      <div className="px-4 pt-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--text)]">{date === today ? 'Hoy' : 'Día'}</h1>
-          <p className="text-sm text-[var(--text-faint)] mb-2">
-            {new Date(date + 'T00:00:00').toLocaleDateString('es-MX', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
+      <div className="px-5 pt-4 flex items-center justify-between">
+        <h1 className="text-[28px] leading-tight font-bold tracking-tight text-[var(--text)]">
+          {date === today ? 'Hoy' : capitalize(weekdayOf(date))}
+        </h1>
+        <div className="flex items-center gap-1 -mr-2">
           <button
             onClick={toggleGymDay}
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: log.gymDay ? 'var(--accent-bg)' : 'var(--surface)' }}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-transform active:scale-90"
+            style={{ backgroundColor: log.gymDay ? 'var(--accent-bg)' : 'transparent' }}
             aria-label="Marcar día de gym"
             title="Fui al gym"
           >
-            <Dumbbell size={18} color={log.gymDay ? 'var(--accent)' : 'var(--text-faint)'} />
+            <Dumbbell size={19} color={log.gymDay ? 'var(--accent)' : 'var(--text-faint)'} />
           </button>
           <button
-            onClick={() => setDate((d) => shiftDate(d, -1))}
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--surface)' }}
-            aria-label="Día anterior"
+            onClick={handleShare}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-transform active:scale-90"
+            aria-label="Compartir resumen del día"
           >
-            <ChevronLeft size={18} color="var(--text-dim)" />
-          </button>
-          <button
-            onClick={() => setDate((d) => shiftDate(d, 1))}
-            disabled={date === today}
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{
-              backgroundColor: 'var(--surface)',
-              opacity: date === today ? 0.4 : 1,
-            }}
-            aria-label="Día siguiente"
-          >
-            <ChevronRight size={18} color="var(--text-dim)" />
+            <Share size={19} color="var(--text-faint)" />
           </button>
         </div>
       </div>
-      {date !== today && (
-        <button
-          onClick={() => setDate(today)}
-          className="mx-4 mt-1 mb-1 text-xs font-medium"
-          style={{ color: 'var(--accent)' }}
-        >
-          ← Volver a hoy
-        </button>
-      )}
 
+      {/* The chevrons flank the date itself, so stepping through days reads
+          as one control instead of loose buttons parked next to a label. */}
+      <div className="px-3 flex items-center gap-1">
+        <button
+          onClick={() => setDate((d) => shiftDate(d, -1))}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
+          aria-label="Día anterior"
+        >
+          <ChevronLeft size={18} color="var(--text-faint)" />
+        </button>
+        <span className="text-sm text-[var(--text-dim)] tabular-nums">
+          {new Date(date + 'T00:00:00').toLocaleDateString('es-MX', {
+            day: 'numeric',
+            month: 'long',
+          })}
+        </span>
+        <button
+          onClick={() => setDate((d) => shiftDate(d, 1))}
+          disabled={date === today}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
+          style={{ opacity: date === today ? 0.3 : 1 }}
+          aria-label="Día siguiente"
+        >
+          <ChevronRight size={18} color="var(--text-faint)" />
+        </button>
+        {date !== today && (
+          <button
+            onClick={() => setDate(today)}
+            className="h-8 px-3 ml-1 rounded-full text-xs font-semibold active:scale-95 transition-transform"
+            style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
+          >
+            Hoy
+          </button>
+        )}
+      </div>
+
+      {/* A nudge, not an alarm — it shouldn't outweigh the day's numbers. */}
       {!backupDismissed && needsBackupReminder(data) && (
-        <div className="mx-4 mt-2 mb-1 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: 'var(--accent-bg)' }}>
-          <div className="flex-1">
-            <p className="text-sm text-[var(--text)]">
-              {daysSinceLastExport() === null
-                ? 'Aún no has respaldado tus datos.'
-                : `Han pasado ${daysSinceLastExport()} días desde tu último respaldo.`}
-            </p>
-            <button onClick={onGoToBackup} className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
-              Exportar ahora →
-            </button>
-          </div>
+        <div className="mx-5 mt-3 flex items-center gap-2 text-xs">
+          <ShieldAlert size={14} color="var(--text-faint)" className="shrink-0" />
+          <span className="text-[var(--text-faint)] flex-1 min-w-0 truncate">
+            {daysSinceLastExport() === null
+              ? 'Sin respaldo todavía'
+              : `Último respaldo hace ${daysSinceLastExport()} días`}
+          </span>
+          <button
+            onClick={onGoToBackup}
+            className="font-semibold h-8 px-2.5 rounded-full shrink-0 active:scale-95 transition-transform"
+            style={{ color: 'var(--accent)' }}
+          >
+            Exportar
+          </button>
           <button
             onClick={() => setBackupDismissed(true)}
-            className="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center text-[var(--text-faint)] shrink-0"
+            className="w-8 h-8 -mr-1 flex items-center justify-center text-[var(--text-faint)] shrink-0"
             aria-label="Descartar"
           >
-            <X size={18} />
+            <X size={15} />
           </button>
         </div>
       )}
 
-      <div className="px-4 py-3 mb-2 bg-[var(--surface)] mx-4 rounded-2xl">
-        <ProgressBar label="Calorías" consumed={totals.kcal} goal={goals.kcal} unit="kcal" color="var(--accent)" />
-        <ProgressBar label="Proteína" consumed={totals.protein} goal={goals.protein} unit="g" color="var(--success)" />
-        <ProgressBar label="Carbohidratos" consumed={totals.carbs} goal={goals.carbs} unit="g" color="var(--warning)" />
-        <ProgressBar label="Grasas" consumed={totals.fat} goal={goals.fat} unit="g" color="#bf5af2" />
-      </div>
-
-      <div className="px-4">
-        <button
-          onClick={handleShare}
-          className="w-full h-11 rounded-xl text-sm font-medium"
-          style={{ color: 'var(--text-dim)', backgroundColor: 'var(--surface)' }}
-        >
-          Compartir resumen del día
-        </button>
+      <div className="px-5 mt-4">
+        <DaySummary totals={totals} goals={goals} />
         {shareError && (
-          <p className="text-xs mt-1.5 text-center" style={{ color: 'var(--danger)' }}>
+          <p className="text-xs mt-2 text-center" style={{ color: 'var(--danger)' }}>
             {shareError}
           </p>
         )}
@@ -318,44 +328,40 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
         const isPending = meal.slot !== 'snacks' && !meal.eaten
         const SlotIcon = SLOT_ICON[meal.slot]
         return (
-          <div key={meal.id} className="px-4 mt-4">
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center gap-2">
-                <SlotIcon size={17} color="var(--text-dim)" />
-                <h2 className="text-base font-semibold text-[var(--text)]">{SLOT_LABEL[meal.slot]}</h2>
-                {meal.slot !== 'snacks' && !isEmpty && (
-                  <span
-                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
-                    style={
-                      isPending
-                        ? { color: 'var(--text-faint)', backgroundColor: 'var(--surface-2)' }
-                        : { color: 'var(--success)', backgroundColor: 'rgba(48,209,88,0.14)' }
-                    }
-                  >
-                    {isPending ? 'Pendiente' : '✓ Comido'}
-                  </span>
-                )}
+          <div key={meal.id} className="px-5 mt-6">
+            <div className="flex justify-between items-center mb-2.5 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <SlotIcon size={16} color="var(--text-dim)" className="shrink-0" />
+                <h2 className="text-[15px] font-semibold text-[var(--text)] truncate">
+                  {SLOT_LABEL[meal.slot]}
+                </h2>
+                <span className="text-xs text-[var(--text-faint)] tabular-nums shrink-0">
+                  {Math.round(mealMacros.kcal)} kcal
+                </span>
               </div>
-              <span className="text-xs text-[var(--text-faint)]">{Math.round(mealMacros.kcal)} kcal</span>
+
+              {/* One compact control instead of a full-width button repeated
+                  down the page — the state and the action are the same tap. */}
+              {meal.slot !== 'snacks' && !isEmpty && (
+                <button
+                  onClick={() => toggleEaten(meal.slot)}
+                  className="flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full text-xs font-semibold shrink-0 transition-all active:scale-95"
+                  style={
+                    isPending
+                      ? { color: 'var(--text-dim)', backgroundColor: 'var(--surface)' }
+                      : { color: 'var(--success)', backgroundColor: 'rgba(48,209,88,0.14)' }
+                  }
+                  aria-pressed={!isPending}
+                >
+                  {isPending ? <Circle size={15} /> : <CheckCircle2 size={15} />}
+                  {isPending ? 'Pendiente' : 'Comido'}
+                </button>
+              )}
             </div>
 
-            {meal.slot !== 'snacks' && !isEmpty && (
-              <button
-                onClick={() => toggleEaten(meal.slot)}
-                className="w-full mb-2 h-11 rounded-xl text-sm font-medium border"
-                style={
-                  isPending
-                    ? { color: 'var(--accent)', borderColor: 'var(--accent)', backgroundColor: 'transparent' }
-                    : { color: 'var(--text-dim)', borderColor: 'var(--border)', backgroundColor: 'transparent' }
-                }
-              >
-                {isPending ? 'Marcar como comido' : 'Desmarcar'}
-              </button>
-            )}
-
             <div
-              className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)]"
-              style={{ opacity: isPending ? 0.55 : 1 }}
+              className="rounded-2xl bg-[var(--surface)] divide-y divide-[var(--border)] transition-opacity"
+              style={{ opacity: isPending ? 0.75 : 1 }}
             >
               {meal.items.length === 0 && (
                 <p className="px-4 py-3 text-sm text-[var(--text-faint)]">Sin alimentos</p>
