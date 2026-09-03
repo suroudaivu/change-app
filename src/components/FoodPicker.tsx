@@ -1,13 +1,44 @@
 import { useMemo, useState } from 'react'
-import type { Food } from '../types'
+import type { Food, Macros } from '../types'
 
 interface FoodPickerProps {
   foods: Food[]
   onPick: (foodId: string, quantity: number) => void
   onClose: () => void
+  /** When set, the picker shows a before/after macro comparison and the
+   * confirm button reads "Sustituir" instead of "Agregar". */
+  compareTo?: Macros
+  title?: string
 }
 
-export function FoodPicker({ foods, onPick, onClose }: FoodPickerProps) {
+function scale(f: Food, quantity: number): Macros {
+  const factor = quantity / 100
+  return {
+    kcal: f.per100.kcal * factor,
+    protein: f.per100.protein * factor,
+    carbs: f.per100.carbs * factor,
+    fat: f.per100.fat * factor,
+  }
+}
+
+function Delta({ label, before, after, unit }: { label: string; before: number; after: number; unit: string }) {
+  const diff = Math.round(after - before)
+  const color = diff === 0 ? 'var(--text-faint)' : diff > 0 ? 'var(--warning)' : 'var(--success)'
+  return (
+    <div className="flex justify-between items-center text-sm py-1">
+      <span className="text-[var(--text-dim)]">{label}</span>
+      <span className="text-[var(--text-faint)]">
+        {Math.round(before)} → {Math.round(after)} {unit}
+      </span>
+      <span className="font-medium w-16 text-right" style={{ color }}>
+        {diff > 0 ? '+' : ''}
+        {diff} {unit}
+      </span>
+    </div>
+  )
+}
+
+export function FoodPicker({ foods, onPick, onClose, compareTo, title }: FoodPickerProps) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('100')
@@ -19,6 +50,9 @@ export function FoodPicker({ foods, onPick, onClose }: FoodPickerProps) {
       (f) => f.name.toLowerCase().includes(q) || f.brand?.toLowerCase().includes(q),
     )
   }, [foods, query])
+
+  const qtyNum = parseFloat(quantity) || 0
+  const newMacros = selected ? scale(selected, qtyNum) : null
 
   function confirm() {
     if (!selected) return
@@ -36,13 +70,16 @@ export function FoodPicker({ foods, onPick, onClose }: FoodPickerProps) {
         <div className="p-4 border-b border-[var(--border)]">
           <div className="w-10 h-1 rounded-full bg-[var(--border)] mx-auto mb-3" />
           {!selected ? (
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar alimento..."
-              className="w-full bg-[var(--surface-2)] rounded-xl px-4 py-3 text-[var(--text)] placeholder:text-[var(--text-faint)] outline-none"
-            />
+            <>
+              {title && <p className="text-sm text-[var(--text-dim)] mb-2">{title}</p>}
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar alimento..."
+                className="w-full bg-[var(--surface-2)] rounded-xl px-4 py-3 text-[var(--text)] placeholder:text-[var(--text-faint)] outline-none"
+              />
+            </>
           ) : (
             <div>
               <p className="text-sm text-[var(--text-dim)]">{selected.brand}</p>
@@ -83,6 +120,7 @@ export function FoodPicker({ foods, onPick, onClose }: FoodPickerProps) {
                 Cantidad ({selected.unit === 'unidad' ? 'unidades' : selected.unit})
               </span>
               <input
+                autoFocus
                 type="number"
                 inputMode="decimal"
                 value={quantity}
@@ -90,6 +128,16 @@ export function FoodPicker({ foods, onPick, onClose }: FoodPickerProps) {
                 className="bg-[var(--surface-2)] rounded-xl px-4 py-3 text-lg text-[var(--text)] outline-none"
               />
             </label>
+
+            {compareTo && newMacros && (
+              <div className="rounded-xl bg-[var(--surface-2)] px-3 py-1">
+                <Delta label="Calorías" before={compareTo.kcal} after={newMacros.kcal} unit="kcal" />
+                <Delta label="Proteína" before={compareTo.protein} after={newMacros.protein} unit="g" />
+                <Delta label="Carbohidratos" before={compareTo.carbs} after={newMacros.carbs} unit="g" />
+                <Delta label="Grasas" before={compareTo.fat} after={newMacros.fat} unit="g" />
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={() => setSelected(null)}
@@ -102,7 +150,7 @@ export function FoodPicker({ foods, onPick, onClose }: FoodPickerProps) {
                 className="flex-1 py-3 rounded-xl font-medium text-white"
                 style={{ backgroundColor: 'var(--accent)' }}
               >
-                Agregar
+                {compareTo ? 'Sustituir' : 'Agregar'}
               </button>
             </div>
           </div>

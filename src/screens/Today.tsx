@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AppData, MealSlot } from '../types'
+import type { AppData, Macros, MealSlot } from '../types'
 import { computeDayMacros, computeMealMacros, findFood, getOrCreateDayLog, todayISO } from '../storage'
 import { ProgressBar } from '../components/ProgressBar'
 import { FoodPicker } from '../components/FoodPicker'
@@ -20,6 +20,12 @@ export function Today({ data, update }: TodayProps) {
   const date = todayISO()
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
+  const [swapTarget, setSwapTarget] = useState<{
+    slot: MealSlot
+    itemId: string
+    foodName: string
+    macros: Macros
+  } | null>(null)
 
   // Derived in-memory from the diet template until the user actually edits
   // today (the mutating handlers below persist it at that point).
@@ -57,6 +63,19 @@ export function Today({ data, update }: TodayProps) {
       const meals = currentLog.meals.map((m) => (m.slot === slot ? { ...m, eaten: !m.eaten } : m))
       return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
     })
+  }
+
+  function swapItem(slot: MealSlot, itemId: string, foodId: string, quantity: number) {
+    update((current) => {
+      const { data: withLog, log: currentLog } = getOrCreateDayLog(current, date)
+      const meals = currentLog.meals.map((m) =>
+        m.slot === slot
+          ? { ...m, items: m.items.map((i) => (i.id === itemId ? { ...i, foodId, quantity } : i)) }
+          : m,
+      )
+      return { ...withLog, dayLogs: { ...withLog.dayLogs, [date]: { ...currentLog, meals } } }
+    })
+    setSwapTarget(null)
   }
 
   function updateQuantity(slot: MealSlot, itemId: string, quantity: number) {
@@ -142,6 +161,12 @@ export function Today({ data, update }: TodayProps) {
                 const factor = item.quantity / 100
                 const kcal = Math.round(food.per100.kcal * factor)
                 const isEditing = editingItem === item.id
+                const itemMacros = {
+                  kcal: food.per100.kcal * factor,
+                  protein: food.per100.protein * factor,
+                  carbs: food.per100.carbs * factor,
+                  fat: food.per100.fat * factor,
+                }
                 return (
                   <div key={item.id} className="px-4 py-2.5 flex items-center gap-2">
                     <div className="flex-1 min-w-0">
@@ -168,6 +193,16 @@ export function Today({ data, update }: TodayProps) {
                         </button>
                       )}
                     </div>
+                    <button
+                      onClick={() =>
+                        setSwapTarget({ slot: meal.slot, itemId: item.id, foodName: food.name, macros: itemMacros })
+                      }
+                      className="text-[var(--text-faint)] text-sm px-1.5"
+                      aria-label="Sustituir"
+                      title="Sustituir"
+                    >
+                      ⇄
+                    </button>
                     <button
                       onClick={() => removeItem(meal.slot, item.id)}
                       className="text-[var(--text-faint)] text-lg px-2"
@@ -196,6 +231,16 @@ export function Today({ data, update }: TodayProps) {
           foods={ensuredData.foods}
           onPick={(foodId, qty) => addItem(pickerSlot, foodId, qty)}
           onClose={() => setPickerSlot(null)}
+        />
+      )}
+
+      {swapTarget && (
+        <FoodPicker
+          foods={ensuredData.foods}
+          title={`Sustituir "${swapTarget.foodName}"`}
+          compareTo={swapTarget.macros}
+          onPick={(foodId, qty) => swapItem(swapTarget.slot, swapTarget.itemId, foodId, qty)}
+          onClose={() => setSwapTarget(null)}
         />
       )}
     </div>
