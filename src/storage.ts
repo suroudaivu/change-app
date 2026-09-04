@@ -115,6 +115,25 @@ export function todayISO(): string {
   return local.toISOString().slice(0, 10)
 }
 
+/**
+ * Moves a YYYY-MM-DD date by whole days.
+ *
+ * Parses as UTC rather than local: `new Date('2026-09-04T00:00:00')` is local
+ * midnight, and serializing that back through toISOString() lands on the
+ * previous day for anyone east of Greenwich. Doing the arithmetic entirely in
+ * UTC keeps the result the same in every timezone.
+ */
+export function shiftDateISO(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** N days before today, in the user's local calendar. */
+export function daysAgoISO(days: number): string {
+  return shiftDateISO(todayISO(), -days)
+}
+
 /** Deep-clones the diet template into a fresh day log for the given date. */
 export function buildDayFromTemplate(data: AppData, date: string): DayLog {
   return {

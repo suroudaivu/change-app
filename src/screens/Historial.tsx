@@ -1,6 +1,6 @@
 import { Dumbbell } from 'lucide-react'
 import type { AppData } from '../types'
-import { computeDayMacros, todayISO } from '../storage'
+import { computeDayMacros, shiftDateISO, todayISO } from '../storage'
 
 interface HistorialProps {
   data: AppData
@@ -44,7 +44,7 @@ export function Historial({ data, onOpenDay }: HistorialProps) {
 
   // Averages only count days actually eaten on, so a missed day doesn't drag
   // the average down as if it were a zero-calorie day.
-  const last7 = rows.filter((r) => r.date > shiftISO(today, -7))
+  const last7 = rows.filter((r) => r.date > shiftDateISO(today, -7))
   const logged7 = last7.filter((r) => r.logged)
   const avg = (pick: (r: DayRow) => number) =>
     logged7.length ? Math.round(logged7.reduce((s, r) => s + pick(r), 0) / logged7.length) : null
@@ -182,10 +182,4 @@ function formatDay(iso: string): string {
     day: 'numeric',
     month: 'short',
   })
-}
-
-function shiftISO(iso: string, days: number): string {
-  const d = new Date(iso + 'T00:00:00')
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
 }

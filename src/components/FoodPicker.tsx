@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Pencil, Plus } from 'lucide-react'
 import type { Food, Macros } from '../types'
 import { useKeyboardInset } from '../useKeyboardInset'
 
@@ -13,6 +14,9 @@ interface FoodPickerProps {
   /** Quick "common substitute" chips shown above the search, each with a
    * sensible default quantity for that specific swap. */
   suggestions?: { foodId: string; quantity: number }[]
+  /** Opens the food editor. Without these the food database is read-only. */
+  onCreateFood?: (name: string) => void
+  onEditFood?: (food: Food) => void
 }
 
 function scale(f: Food, quantity: number): Macros {
@@ -42,7 +46,16 @@ function Delta({ label, before, after, unit }: { label: string; before: number; 
   )
 }
 
-export function FoodPicker({ foods, onPick, onClose, compareTo, title, suggestions }: FoodPickerProps) {
+export function FoodPicker({
+  foods,
+  onPick,
+  onClose,
+  compareTo,
+  title,
+  suggestions,
+  onCreateFood,
+  onEditFood,
+}: FoodPickerProps) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('100')
@@ -142,22 +155,46 @@ export function FoodPicker({ foods, onPick, onClose, compareTo, title, suggestio
               </div>
             )}
             {results.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => pick(f)}
-                className="w-full text-left px-3 py-3 rounded-xl active:bg-[var(--surface-2)] flex justify-between items-center"
-              >
-                <span>
-                  <span className="text-[var(--text)]">{f.name}</span>
-                  {f.brand && <span className="text-[var(--text-faint)] text-sm"> · {f.brand}</span>}
-                </span>
-                <span className="text-[var(--text-faint)] text-xs">
-                  {Math.round((f.per100.kcal * (f.unit === 'unidad' ? 1 : 100)) / 100)} kcal/
-                  {f.unit === 'unidad' ? 'u' : f.unit === 'ml' ? '100ml' : '100g'}
-                </span>
-              </button>
+              <div key={f.id} className="flex items-center">
+                <button
+                  onClick={() => pick(f)}
+                  className="flex-1 min-w-0 text-left px-3 py-3 rounded-xl active:bg-[var(--surface-2)] flex justify-between items-center gap-2"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="text-[var(--text)]">{f.name}</span>
+                    {f.brand && <span className="text-[var(--text-faint)] text-sm"> · {f.brand}</span>}
+                  </span>
+                  <span className="text-[var(--text-faint)] text-xs shrink-0">
+                    {Math.round((f.per100.kcal * (f.unit === 'unidad' ? 1 : 100)) / 100)} kcal/
+                    {f.unit === 'unidad' ? 'u' : f.unit === 'ml' ? '100ml' : '100g'}
+                  </span>
+                </button>
+                {onEditFood && (
+                  <button
+                    onClick={() => onEditFood(f)}
+                    className="w-11 h-11 flex items-center justify-center text-[var(--text-faint)] shrink-0"
+                    aria-label={`Editar ${f.name}`}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+              </div>
             ))}
-            {results.length === 0 && (
+
+            {/* Always reachable, so a food that isn't in the list yet is never
+                a dead end — and pre-named with whatever was searched for. */}
+            {onCreateFood && (
+              <button
+                onClick={() => onCreateFood(query.trim())}
+                className="w-full text-left px-3 py-3 mt-1 rounded-xl flex items-center gap-2 font-medium"
+                style={{ color: 'var(--accent)' }}
+              >
+                <Plus size={16} />
+                {query.trim() ? `Crear "${query.trim()}"` : 'Crear alimento nuevo'}
+              </button>
+            )}
+
+            {results.length === 0 && !onCreateFood && (
               <p className="text-center text-[var(--text-faint)] py-8 text-sm">Sin resultados</p>
             )}
           </div>

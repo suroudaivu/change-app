@@ -11,7 +11,7 @@ import {
 import { Line } from 'react-chartjs-2'
 import { X } from 'lucide-react'
 import type { AppData } from '../types'
-import { todayISO } from '../storage'
+import { daysAgoISO, todayISO } from '../storage'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -28,13 +28,6 @@ const RANGES = [
 ] as const
 
 type RangeId = (typeof RANGES)[number]['id']
-
-function daysAgoISO(n: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  const offset = d.getTimezoneOffset()
-  return new Date(d.getTime() - offset * 60_000).toISOString().slice(0, 10)
-}
 
 /** Closest entry to `targetDate`, searching backward first (most recent
  * entry on or before that date), so a missed weigh-in doesn't break stats. */

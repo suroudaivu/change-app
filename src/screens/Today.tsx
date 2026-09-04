@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import type { AppData, DayLog, Macros, MealSlot } from '../types'
+import type { AppData, DayLog, Food, Macros, MealSlot } from '../types'
 import {
   buildDayFromTemplate,
   computeDayMacros,
@@ -25,11 +25,13 @@ import {
   daysSinceLastExport,
   findFood,
   needsBackupReminder,
+  shiftDateISO,
   todayISO,
 } from '../storage'
 import { DaySummary } from '../components/DaySummary'
 import { FoodPicker } from '../components/FoodPicker'
 import { GymCelebration } from '../components/GymCelebration'
+import { FoodForm } from '../components/FoodForm'
 import { buildShareCard, shareCard } from '../shareCard'
 import { commonSubstitutes } from '../seedData'
 
@@ -55,12 +57,6 @@ interface TodayProps {
   date: string
   onDateChange: (date: string) => void
   onGoToBackup: () => void
-}
-
-function shiftDate(iso: string, days: number): string {
-  const d = new Date(iso + 'T00:00:00')
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
 }
 
 function weekdayOf(iso: string): string {
@@ -107,6 +103,8 @@ export function Today({
   const [backupDismissed, setBackupDismissed] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
   const [celebrateGym, setCelebrateGym] = useState(false)
+  // { food } edits an existing one; { name } creates from a search that missed.
+  const [foodForm, setFoodForm] = useState<{ food?: Food; name?: string } | null>(null)
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [swapTarget, setSwapTarget] = useState<{
@@ -235,6 +233,18 @@ export function Today({
     }
   }
 
+  /** Saves a food created or corrected from the picker. Editing keeps the id,
+   * so days already logged against it pick up the corrected values. */
+  function saveFood(food: Food) {
+    update((current) => ({
+      ...current,
+      foods: current.foods.some((f) => f.id === food.id)
+        ? current.foods.map((f) => (f.id === food.id ? food : f))
+        : [...current.foods, food],
+    }))
+    setFoodForm(null)
+  }
+
   function updateQuantity(slot: MealSlot, itemId: string, quantity: number) {
     mutateMeals((meals) =>
       meals.map((m) =>
@@ -275,7 +285,7 @@ export function Today({
           as one control instead of loose buttons parked next to a label. */}
       <div className="px-3 flex items-center gap-1">
         <button
-          onClick={() => setDate(shiftDate(date, -1))}
+          onClick={() => setDate(shiftDateISO(date, -1))}
           className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
           aria-label="Día anterior"
         >
@@ -288,7 +298,7 @@ export function Today({
           })}
         </span>
         <button
-          onClick={() => setDate(shiftDate(date, 1))}
+          onClick={() => setDate(shiftDateISO(date, 1))}
           disabled={date === today}
           className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
           style={{ opacity: date === today ? 0.3 : 1 }}
@@ -526,6 +536,17 @@ export function Today({
           foods={data.foods}
           onPick={(foodId, qty) => addItem(pickerSlot, foodId, qty)}
           onClose={() => setPickerSlot(null)}
+          onCreateFood={(name) => setFoodForm({ name })}
+          onEditFood={(food) => setFoodForm({ food })}
+        />
+      )}
+
+      {foodForm && (
+        <FoodForm
+          editing={foodForm.food}
+          initialName={foodForm.name}
+          onSave={saveFood}
+          onClose={() => setFoodForm(null)}
         />
       )}
 
