@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useKeyboardInset } from '../useKeyboardInset'
 import type { Food } from '../types'
 
 interface AddSupplementProps {
@@ -21,6 +22,7 @@ export function AddSupplement({ onAdd, onClose, editing }: AddSupplementProps) {
   const [protein, setProtein] = useState(perDose(editing?.per100.protein ?? 0))
   const [carbs, setCarbs] = useState(perDose(editing?.per100.carbs ?? 0))
   const [fat, setFat] = useState(perDose(editing?.per100.fat ?? 0))
+  const keyboardInset = useKeyboardInset()
 
   const canSave = name.trim().length > 0
 
@@ -50,9 +52,13 @@ export function AddSupplement({ onAdd, onClose, editing }: AddSupplementProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50"
+      onClick={onClose}
+      style={{ paddingBottom: keyboardInset }}
+    >
       <div
-        className="bg-[var(--surface)] rounded-t-2xl max-h-[85vh] overflow-y-auto"
+        className="bg-[var(--surface)] rounded-t-2xl max-h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-[var(--border)]">

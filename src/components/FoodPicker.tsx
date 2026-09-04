@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Food, Macros } from '../types'
+import { useKeyboardInset } from '../useKeyboardInset'
 
 interface FoodPickerProps {
   foods: Food[]
@@ -45,6 +46,7 @@ export function FoodPicker({ foods, onPick, onClose, compareTo, title, suggestio
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Food | null>(null)
   const [quantity, setQuantity] = useState('100')
+  const keyboardInset = useKeyboardInset()
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -86,9 +88,17 @@ export function FoodPicker({ foods, onPick, onClose, compareTo, title, suggestio
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50"
+      onClick={onClose}
+      style={{ paddingBottom: keyboardInset }}
+    >
+      {/* Fixed height, not max-height: letting the sheet shrink to fit the
+          results made it slide down behind the keyboard as soon as a search
+          narrowed things to a couple of matches. */}
       <div
-        className="bg-[var(--surface)] rounded-t-2xl max-h-[80vh] flex flex-col"
+        className="bg-[var(--surface)] rounded-t-2xl flex flex-col"
+        style={{ height: '78vh', maxHeight: '100%' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-[var(--border)]">
