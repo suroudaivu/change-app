@@ -1,6 +1,7 @@
+import { useMemo } from 'react'
 import { Dumbbell } from 'lucide-react'
 import type { AppData } from '../types'
-import { computeDayMacros, shiftDateISO, todayISO } from '../storage'
+import { computeDayMacros, computeMealMacros, shiftDateISO, todayISO } from '../storage'
 
 interface HistorialProps {
   data: AppData
@@ -15,7 +16,10 @@ interface DayRow {
   fat: number
   gymDay: boolean
   weightKg?: number
-  logged: boolean
+  /** eaten = meals confirmed; planned = food is there but unconfirmed, so it
+   * shouldn't count in averages yet nor be dismissed as "sin registro". */
+  status: 'eaten' | 'planned' | 'empty'
+  plannedKcal: number
 }
 
 function buildRows(data: AppData): DayRow[] {
@@ -28,24 +32,36 @@ function buildRows(data: AppData): DayRow[] {
     .map((date) => {
       const log = data.dayLogs[date]
       const macros = log ? computeDayMacros(data, log) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+      const plannedKcal = log
+        ? log.meals.reduce((sum, meal) => sum + computeMealMacros(data, meal).kcal, 0)
+        : 0
+      const status: DayRow['status'] =
+        macros.kcal > 0 ? 'eaten' : plannedKcal > 0 ? 'planned' : 'empty'
+
       return {
         date,
         ...macros,
         gymDay: !!log?.gymDay,
         weightKg: data.weightLog.find((w) => w.date === date)?.kg,
-        logged: macros.kcal > 0,
+        status,
+        plannedKcal,
       }
     })
 }
 
 export function Historial({ data, onOpenDay }: HistorialProps) {
-  const rows = buildRows(data)
+  // Recomputing every day's macros on each render adds up once there's a
+  // year of history, and none of it changes unless the data does.
+  const rows = useMemo(
+    () => buildRows(data),
+    [data.dayLogs, data.weightLog, data.foods],
+  )
   const today = todayISO()
 
   // Averages only count days actually eaten on, so a missed day doesn't drag
   // the average down as if it were a zero-calorie day.
   const last7 = rows.filter((r) => r.date > shiftDateISO(today, -7))
-  const logged7 = last7.filter((r) => r.logged)
+  const logged7 = last7.filter((r) => r.status === 'eaten')
   const avg = (pick: (r: DayRow) => number) =>
     logged7.length ? Math.round(logged7.reduce((s, r) => s + pick(r), 0) / logged7.length) : null
 
@@ -111,13 +127,19 @@ export function Historial({ data, onOpenDay }: HistorialProps) {
                       {row.gymDay && <Dumbbell size={13} color="var(--accent)" className="shrink-0" />}
                     </span>
                     <span className="text-sm font-semibold tabular-nums shrink-0 text-[var(--text)]">
-                      {row.logged ? `${Math.round(row.kcal).toLocaleString('es-MX')} kcal` : (
+                      {row.status === 'eaten' && `${Math.round(row.kcal).toLocaleString('es-MX')} kcal`}
+                      {row.status === 'planned' && (
+                        <span className="font-normal text-[var(--text-faint)]">
+                          {Math.round(row.plannedKcal).toLocaleString('es-MX')} kcal sin confirmar
+                        </span>
+                      )}
+                      {row.status === 'empty' && (
                         <span className="text-[var(--text-faint)] font-normal">Sin registro</span>
                       )}
                     </span>
                   </div>
 
-                  {row.logged && (
+                  {row.status === 'eaten' && (
                     <div
                       className="h-1 rounded-full overflow-hidden mb-1.5"
                       style={{ backgroundColor: 'var(--surface-2)' }}
@@ -135,7 +157,7 @@ export function Historial({ data, onOpenDay }: HistorialProps) {
 
                   <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums text-[var(--text-faint)]">
                     <span>
-                      {row.logged
+                      {row.status === 'eaten'
                         ? `${Math.round(row.protein)}P · ${Math.round(row.carbs)}C · ${Math.round(row.fat)}G`
                         : ''}
                     </span>

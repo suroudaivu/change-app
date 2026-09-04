@@ -49,6 +49,8 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
   const [kgInput, setKgInput] = useState('')
   const [range, setRange] = useState<RangeId>('30')
   const today = todayISO()
+  // Defaults to today, but a forgotten weigh-in can still be filled in later.
+  const [entryDate, setEntryDate] = useState(today)
 
   const sorted = useMemo(
     () => [...data.weightLog].sort((a, b) => a.date.localeCompare(b.date)),
@@ -92,13 +94,14 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
     const kg = parseFloat(kgInput)
     if (!kg || kg <= 0) return
     update((current) => {
-      const existingIdx = current.weightLog.findIndex((e) => e.date === today)
+      const existingIdx = current.weightLog.findIndex((e) => e.date === entryDate)
       const next = [...current.weightLog]
-      if (existingIdx >= 0) next[existingIdx] = { date: today, kg }
-      else next.push({ date: today, kg })
+      if (existingIdx >= 0) next[existingIdx] = { date: entryDate, kg }
+      else next.push({ date: entryDate, kg })
       return { ...current, weightLog: next }
     })
     setKgInput('')
+    setEntryDate(today)
   }
 
   function deleteEntry(date: string, kg: number) {
@@ -125,7 +128,7 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
     ],
   }
 
-  const todayEntry = data.weightLog.find((e) => e.date === today)
+  const entryExisting = data.weightLog.find((e) => e.date === entryDate)
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -154,23 +157,46 @@ export function Peso({ data, update, updateUndoable }: PesoProps) {
             )}
           </div>
 
-          <div className="flex gap-2 items-center pt-4 border-t border-[var(--border)]">
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={kgInput}
-              onChange={(e) => setKgInput(e.target.value)}
-              placeholder={todayEntry ? `Hoy: ${todayEntry.kg} kg` : 'Registrar peso de hoy'}
-              className="flex-1 min-w-0 bg-[var(--surface-2)] rounded-xl px-3.5 h-11 text-[var(--text)] placeholder:text-[var(--text-faint)] outline-none"
-            />
-            <button
-              onClick={saveWeight}
-              className="h-11 px-4 rounded-xl font-semibold text-white shrink-0 active:scale-95 transition-transform"
-              style={{ backgroundColor: 'var(--accent)' }}
-            >
-              {todayEntry ? 'Actualizar' : 'Guardar'}
-            </button>
+          <div className="pt-4 border-t border-[var(--border)]">
+            <div className="flex gap-2 items-center">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={kgInput}
+                onChange={(e) => setKgInput(e.target.value)}
+                placeholder={entryExisting ? `${entryExisting.kg} kg registrado` : 'Peso en kg'}
+                className="flex-1 min-w-0 bg-[var(--surface-2)] rounded-xl px-3.5 h-11 text-[var(--text)] placeholder:text-[var(--text-faint)] outline-none"
+              />
+              <button
+                onClick={saveWeight}
+                className="h-11 px-4 rounded-xl font-semibold text-white shrink-0 active:scale-95 transition-transform"
+                style={{ backgroundColor: 'var(--accent)' }}
+              >
+                {entryExisting ? 'Actualizar' : 'Guardar'}
+              </button>
+            </div>
+
+            {/* Native date field, capped at today — a weigh-in you forgot can
+                still be entered, but a future one can't. */}
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="date"
+                value={entryDate}
+                max={today}
+                onChange={(e) => setEntryDate(e.target.value || today)}
+                className="bg-transparent text-xs text-[var(--text-faint)] outline-none"
+              />
+              {entryDate !== today && (
+                <button
+                  onClick={() => setEntryDate(today)}
+                  className="text-xs font-semibold h-7 px-2.5 rounded-full active:scale-95 transition-transform"
+                  style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
+                >
+                  Hoy
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
