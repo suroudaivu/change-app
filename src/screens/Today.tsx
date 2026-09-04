@@ -29,6 +29,7 @@ import {
 } from '../storage'
 import { DaySummary } from '../components/DaySummary'
 import { FoodPicker } from '../components/FoodPicker'
+import { GymCelebration } from '../components/GymCelebration'
 import { buildShareCard, shareCard } from '../shareCard'
 import { commonSubstitutes } from '../seedData'
 
@@ -105,6 +106,7 @@ export function Today({
   const setDate = onDateChange
   const [backupDismissed, setBackupDismissed] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
+  const [celebrateGym, setCelebrateGym] = useState(false)
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [swapTarget, setSwapTarget] = useState<{
@@ -209,6 +211,8 @@ export function Today({
   }
 
   function toggleGymDay() {
+    // Celebrate marking it, not un-marking it.
+    if (!log.gymDay) setCelebrateGym(true)
     mutateDay((log) => ({ ...log, gymDay: !log.gymDay }))
   }
 
@@ -524,6 +528,8 @@ export function Today({
           onClose={() => setPickerSlot(null)}
         />
       )}
+
+      {celebrateGym && <GymCelebration onDone={() => setCelebrateGym(false)} />}
 
       {swapTarget && (
         <FoodPicker
