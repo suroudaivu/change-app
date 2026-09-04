@@ -67,6 +67,18 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/** One macro in a meal's totals row, colour-coded to match the day summary. */
+function MealMacro({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <span className="text-[var(--text-dim)]">
+      {Math.round(value)}
+      <span className="ml-0.5 font-semibold" style={{ color }}>
+        {label}
+      </span>
+    </span>
+  )
+}
+
 export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps) {
   const today = todayISO()
   const [date, setDate] = useState(today)
@@ -335,9 +347,6 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
                 <h2 className="text-[15px] font-semibold text-[var(--text)] truncate">
                   {SLOT_LABEL[meal.slot]}
                 </h2>
-                <span className="text-xs text-[var(--text-faint)] tabular-nums shrink-0">
-                  {Math.round(mealMacros.kcal)} kcal
-                </span>
               </div>
 
               {/* One compact control instead of a full-width button repeated
@@ -431,6 +440,21 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
                   </div>
                 )
               })}
+
+              {/* Per-meal totals: kcal alone doesn't show where the protein
+                  or fat is actually coming from. */}
+              {!isEmpty && (
+                <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-[var(--text)] tabular-nums">
+                    {Math.round(mealMacros.kcal)} kcal
+                  </span>
+                  <div className="flex items-center gap-3 text-xs tabular-nums">
+                    <MealMacro value={mealMacros.protein} label="P" color="var(--success)" />
+                    <MealMacro value={mealMacros.carbs} label="C" color="var(--warning)" />
+                    <MealMacro value={mealMacros.fat} label="G" color="#bf5af2" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {meal.slot === 'snacks' && data.savedSnacks.length > 0 && (
