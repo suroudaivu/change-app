@@ -73,8 +73,9 @@ export function FoodForm({ onSave, onClose, editing, initialName, supplement }: 
   }
 
   return (
+    /* z above the picker it's opened from, whichever order they render in. */
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50"
+      className="fixed inset-0 z-[55] flex flex-col justify-end bg-black/50"
       onClick={onClose}
       style={{ paddingBottom: keyboardInset }}
     >

@@ -12,7 +12,7 @@ import {
   type BackupSummary,
 } from '../storage'
 import { FoodPicker } from '../components/FoodPicker'
-import { AddSupplement } from '../components/AddSupplement'
+import { FoodForm } from '../components/FoodForm'
 
 const SLOT_LABEL: Record<MealSlot, string> = {
   desayuno: 'Desayuno',
@@ -66,8 +66,13 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
     summary: BackupSummary
     fileName: string
   } | null>(null)
-  // null = closed; { food: undefined } = creating; { food } = editing.
-  const [supplementForm, setSupplementForm] = useState<{ food?: Food } | null>(null)
+  // null = closed. { food } edits; { name } creates from a search; the
+  // supplement flag starts the form in "contributes nothing" mode.
+  const [foodForm, setFoodForm] = useState<{
+    food?: Food
+    name?: string
+    supplement?: boolean
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // What your base diet adds up to, so edits can be checked against goals
@@ -85,7 +90,7 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
     { kcal: 0, protein: 0, carbs: 0, fat: 0 },
   )
 
-  function saveSupplement(food: Food) {
+  function saveFood(food: Food) {
     update((current) => {
       const exists = current.foods.some((f) => f.id === food.id)
       return {
@@ -93,13 +98,15 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
         foods: exists
           ? current.foods.map((f) => (f.id === food.id ? food : f))
           : [...current.foods, food],
-        // A new one also becomes a one-tap chip under Hoy → Snacks.
-        savedSnacks: exists
-          ? current.savedSnacks
-          : [...current.savedSnacks, { id: crypto.randomUUID(), foodId: food.id, quantity: 1 }],
+        // Supplements get a one-tap chip under Hoy → Snacks; an ordinary
+        // food added while editing the diet doesn't need one.
+        savedSnacks:
+          exists || !food.isSupplement
+            ? current.savedSnacks
+            : [...current.savedSnacks, { id: crypto.randomUUID(), foodId: food.id, quantity: 1 }],
       }
     })
-    setSupplementForm(null)
+    setFoodForm(null)
   }
 
   function removeSupplement(foodId: string, name: string) {
@@ -372,7 +379,7 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
                 {f.id.startsWith('custom-') && (
                   <>
                     <button
-                      onClick={() => setSupplementForm({ food: f })}
+                      onClick={() => setFoodForm({ food: f })}
                       className="w-11 h-11 flex items-center justify-center text-[var(--text-faint)] shrink-0"
                       aria-label="Editar suplemento"
                     >
@@ -391,7 +398,7 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
             ))}
         </div>
         <button
-          onClick={() => setSupplementForm({})}
+          onClick={() => setFoodForm({ supplement: true })}
           className="w-full mt-2 h-11 rounded-xl text-sm font-medium"
           style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)' }}
         >
@@ -505,11 +512,13 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
         </div>
       )}
 
-      {supplementForm && (
-        <AddSupplement
-          editing={supplementForm.food}
-          onAdd={saveSupplement}
-          onClose={() => setSupplementForm(null)}
+      {foodForm && (
+        <FoodForm
+          editing={foodForm.food}
+          initialName={foodForm.name}
+          supplement={foodForm.supplement}
+          onSave={saveFood}
+          onClose={() => setFoodForm(null)}
         />
       )}
 
@@ -518,6 +527,8 @@ export function Ajustes({ data, update, updateUndoable }: AjustesProps) {
           foods={data.foods}
           onPick={(foodId, qty) => addTemplateItem(pickerSlot, foodId, qty)}
           onClose={() => setPickerSlot(null)}
+          onCreateFood={(name) => setFoodForm({ name })}
+          onEditFood={(food) => setFoodForm({ food })}
         />
       )}
     </div>
