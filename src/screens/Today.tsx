@@ -50,6 +50,9 @@ interface TodayProps {
   data: AppData
   update: (fn: (current: AppData) => AppData) => void
   updateUndoable: (fn: (current: AppData) => AppData, message: string) => void
+  /** Owned by App so Historial can jump straight to a given day. */
+  date: string
+  onDateChange: (date: string) => void
   onGoToBackup: () => void
 }
 
@@ -90,9 +93,16 @@ function MealMacro({
   )
 }
 
-export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps) {
+export function Today({
+  data,
+  update,
+  updateUndoable,
+  date,
+  onDateChange,
+  onGoToBackup,
+}: TodayProps) {
   const today = todayISO()
-  const [date, setDate] = useState(today)
+  const setDate = onDateChange
   const [backupDismissed, setBackupDismissed] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
   const [pickerSlot, setPickerSlot] = useState<MealSlot | null>(null)
@@ -261,7 +271,7 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
           as one control instead of loose buttons parked next to a label. */}
       <div className="px-3 flex items-center gap-1">
         <button
-          onClick={() => setDate((d) => shiftDate(d, -1))}
+          onClick={() => setDate(shiftDate(date, -1))}
           className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
           aria-label="Día anterior"
         >
@@ -274,7 +284,7 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
           })}
         </span>
         <button
-          onClick={() => setDate((d) => shiftDate(d, 1))}
+          onClick={() => setDate(shiftDate(date, 1))}
           disabled={date === today}
           className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
           style={{ opacity: date === today ? 0.3 : 1 }}
