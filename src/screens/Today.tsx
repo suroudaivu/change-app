@@ -67,12 +67,23 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-/** One macro in a meal's totals row, colour-coded to match the day summary. */
-function MealMacro({ value, label, color }: { value: number; label: string; color: string }) {
+/** One macro figure, colour-coded to match the day summary. `muted` is used
+ * per food item, where 21 rows of full-strength colour would be noise. */
+function MealMacro({
+  value,
+  label,
+  color,
+  muted,
+}: {
+  value: number
+  label: string
+  color: string
+  muted?: boolean
+}) {
   return (
-    <span className="text-[var(--text-dim)]">
+    <span className={muted ? 'text-[var(--text-faint)]' : 'text-[var(--text-dim)]'}>
       {Math.round(value)}
-      <span className="ml-0.5 font-semibold" style={{ color }}>
+      <span className="ml-px font-semibold" style={{ color, opacity: muted ? 0.75 : 1 }}>
         {label}
       </span>
     </span>
@@ -405,13 +416,22 @@ export function Today({ data, update, updateUndoable, onGoToBackup }: TodayProps
                           className="bg-[var(--surface-2)] rounded-lg px-2 py-1 mt-1 w-24 text-sm text-[var(--text)] outline-none"
                         />
                       ) : (
-                        <button
-                          onClick={() => setEditingItem(item.id)}
-                          className="flex items-center gap-1 text-xs text-[var(--text-faint)] py-2 -my-1"
-                        >
-                          {item.quantity} {food.unit === 'unidad' ? 'u' : food.unit} · {kcal} kcal
-                          <Pencil size={11} />
-                        </button>
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => setEditingItem(item.id)}
+                            className="flex items-center gap-1 text-xs text-[var(--text-faint)] py-2 -my-1 shrink-0"
+                          >
+                            {item.quantity} {food.unit === 'unidad' ? 'u' : food.unit} · {kcal} kcal
+                            <Pencil size={11} />
+                          </button>
+                          {/* Fills the empty space in the row rather than
+                              adding a third line to every item. */}
+                          <div className="flex items-center gap-1.5 text-[11px] tabular-nums shrink-0">
+                            <MealMacro value={itemMacros.protein} label="P" color="var(--success)" muted />
+                            <MealMacro value={itemMacros.carbs} label="C" color="var(--warning)" muted />
+                            <MealMacro value={itemMacros.fat} label="G" color="#bf5af2" muted />
+                          </div>
+                        </div>
                       )}
                     </div>
                     <button
